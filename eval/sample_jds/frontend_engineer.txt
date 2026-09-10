@@ -1,0 +1,18 @@
+Frontend Engineer — Consumer Product Company
+
+We're hiring a Frontend Engineer to own key parts of our React/TypeScript
+web app used by millions of users. You'll collaborate closely with design
+and product to ship polished, accessible UI.
+
+Required:
+- 3+ years building production web applications
+- Deep expertise in React, TypeScript, and modern CSS
+- Experience with component libraries and design systems
+- Strong eye for UI/UX detail and accessibility standards
+
+Nice to have:
+- Experience with Next.js
+- Familiarity with GraphQL
+- Prior work on consumer-facing products at scale
+
+This is a senior-track role.

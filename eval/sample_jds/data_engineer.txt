@@ -1,0 +1,17 @@
+Senior Data Engineer — Enterprise Analytics
+
+We need a Senior Data Engineer to build and maintain large-scale ETL
+pipelines using Spark, Airflow, and Snowflake. You'll own data quality,
+warehouse modeling, and pipeline reliability for petabyte-scale datasets.
+
+Required:
+- 5+ years of data engineering experience
+- Expert-level Spark, Airflow, and Snowflake (or equivalent warehouse)
+- Deep knowledge of dimensional modeling and data governance
+- Experience with Scala or Java in production data pipelines
+
+Must have:
+- Track record of owning mission-critical data infrastructure at scale
+- Experience with streaming systems (Kafka, Flink, or similar)
+
+Senior role, on-call rotation required.

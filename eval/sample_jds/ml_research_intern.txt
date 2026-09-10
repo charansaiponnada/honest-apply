@@ -1,0 +1,18 @@
+Machine Learning Research Intern — AI Lab
+
+Join our research team for a summer internship focused on large language
+model evaluation and reasoning. You'll design experiments, run evals against
+open-source and proprietary models, and contribute to at least one internal
+research write-up.
+
+Required:
+- Currently pursuing a degree in CS, EE, or a related field
+- Solid understanding of machine learning fundamentals and Python
+- Experience with PyTorch or TensorFlow
+- Comfortable reading and implementing ideas from research papers
+
+Must have:
+- Experience building or fine-tuning a language model, even a small one
+- Familiarity with prompt engineering and evaluation frameworks
+
+Entry-level position, 12-week internship.

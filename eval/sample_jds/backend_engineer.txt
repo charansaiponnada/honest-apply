@@ -1,0 +1,19 @@
+Backend Engineer — Fintech Startup
+
+We're looking for a Backend Engineer to help build and scale our payments
+infrastructure. You'll work primarily in Python and Go, designing REST APIs,
+optimizing PostgreSQL queries, and deploying services on AWS with Docker and
+Kubernetes.
+
+Required:
+- 2+ years of professional software engineering experience
+- Strong Python skills; experience with FastAPI or Flask
+- Experience with relational databases (PostgreSQL preferred)
+- Familiarity with REST API design and testing
+
+Nice to have:
+- Experience with AWS, Docker, Kubernetes
+- Exposure to CI/CD pipelines
+- Interest in fintech or payments systems
+
+This is a mid-level role reporting to our Head of Engineering.

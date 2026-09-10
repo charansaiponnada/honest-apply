@@ -1,0 +1,34 @@
+Jordan Rivera
+jordan.rivera@email.com | (555) 012-3456 | github.com/jordanrivera
+
+SUMMARY
+Final-year Computer Science student with hands-on experience building
+full-stack web applications and small machine learning projects. Comfortable
+across the stack from React frontends to Python backends and SQL databases.
+
+EXPERIENCE
+Software Engineering Intern — Brightline Analytics (Jun 2025 - Aug 2025)
+- Built REST APIs in Python using FastAPI, backed by PostgreSQL
+- Wrote unit and integration tests, improving backend test coverage by 30%
+- Deployed services to AWS using Docker; set up a basic CI pipeline in GitHub Actions
+
+Undergraduate Research Assistant — University AI Lab (Jan 2025 - Present)
+- Fine-tuned a small open-source language model (Llama-based) for a course project
+- Ran evaluation experiments comparing prompting strategies, wrote up results
+- Used PyTorch for model training and evaluation scripts
+
+PROJECTS
+Campus Marketplace (React, TypeScript, Node.js)
+- Built a React + TypeScript frontend with a component-driven design system
+- Implemented REST API endpoints and PostgreSQL schema for listings and messaging
+
+Study Buddy Bot (Python, FastAPI)
+- Built a FastAPI backend serving a simple chatbot using prompt engineering
+- Containerized with Docker for local development
+
+SKILLS
+Python, TypeScript, React, FastAPI, Flask, PostgreSQL, PyTorch, Docker,
+AWS (EC2, S3), Git, REST API design, basic Kubernetes, CI/CD (GitHub Actions)
+
+EDUCATION
+B.S. Computer Science, Expected 2027
