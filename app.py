@@ -24,9 +24,9 @@ from agent.jobs_search import search_jobs  # noqa: E402
 EVAL_LOG_PATH = os.path.join("eval", "logs", "eval_log.json")
 
 # ---------------------------------------------------------------------------
-# Page config + design tokens (neutral, shadcn/ui-inspired system)
+# Page config + design tokens (PRD §8: terracotta / cream / sage / ivory)
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="AI Job Application Agent", layout="wide")
+st.set_page_config(page_title="AI Job Application Agent", page_icon=":material/work:", layout="wide")
 
 st.markdown(
     """
@@ -34,21 +34,22 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     :root {
-        --background: #fafafa;
-        --foreground: #09090b;
-        --card: #ffffff;
-        --muted: #f4f4f5;
-        --muted-foreground: #71717a;
-        --border: #e4e4e7;
-        --primary: #18181b;
-        --primary-foreground: #fafafa;
-        --secondary: #f4f4f5;
-        --secondary-foreground: #18181b;
-        --success-bg: #f0fdf4; --success-fg: #15803d; --success-border: #bbf7d0;
-        --warning-bg: #fffbeb; --warning-fg: #b45309; --warning-border: #fde68a;
-        --destructive-bg: #fef2f2; --destructive-fg: #b91c1c; --destructive-border: #fecaca;
+        --background: #FBF3E7;
+        --foreground: #3A2E27;
+        --card: #FFFDF8;
+        --muted: #F3E9DB;
+        --muted-foreground: #6E5D4F;
+        --border: #E8DCC8;
+        --primary: #C2622D;
+        --primary-hover: #A9521F;
+        --primary-foreground: #FFFFFF;
+        --secondary: #F3E9DB;
+        --secondary-foreground: #3A2E27;
+        --success-bg: #EDF1E2; --success-fg: #4E5A2F; --success-border: #D5DFC2;
+        --warning-bg: #FBF0D9; --warning-fg: #8F6519; --warning-border: #F0DDB5;
+        --destructive-bg: #F9E6E0; --destructive-fg: #8F2E15; --destructive-border: #EEBFB1;
         --radius: 10px;
-        --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-sm: 0 1px 2px rgba(90, 74, 58, 0.06);
     }
 
     html, body, .stApp {
@@ -70,9 +71,9 @@ st.markdown(
     .status-row { display: flex; flex-wrap: wrap; gap: 1.1rem; }
     .status-item { display: flex; align-items: center; font-size: 0.78rem; color: var(--muted-foreground); white-space: nowrap; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 0.4rem; flex-shrink: 0; }
-    .status-dot-live { background-color: #22c55e; }
-    .status-dot-mock { background-color: #f59e0b; }
-    .status-dot-static { background-color: #a1a1aa; }
+    .status-dot-live { background-color: #7A8450; }
+    .status-dot-mock { background-color: #D9A441; }
+    .status-dot-static { background-color: #9B8F7B; }
 
     .section-label {
         font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
@@ -90,7 +91,7 @@ st.markdown(
         font-size: 0.85rem;
         box-shadow: none;
     }
-    .stButton > button:hover { background-color: #27272a; border-color: #27272a; color: var(--primary-foreground); }
+    .stButton > button:hover { background-color: var(--primary-hover); border-color: var(--primary-hover); color: var(--primary-foreground); }
     .stDownloadButton > button {
         background-color: var(--card); color: var(--foreground); border: 1px solid var(--border);
         border-radius: 6px; font-size: 0.8rem; font-weight: 500; padding: 0.4em 0.9em;
@@ -196,11 +197,14 @@ jd_path = os.path.join("eval", "sample_jds", "backend_engineer.txt")
 if os.path.exists(jd_path):
     SAMPLE_JD = open(jd_path).read()
 
+# Four pipeline stages, named exactly as the PRD demo expects:
+# Extract -> Tailor -> Act -> Log. The guardrail is the gate that drives the
+# "Act" step; eval logging is the final "Log" step.
 STEP_LABELS = {
     "extract": "Extract",
     "tailor": "Tailor",
-    "guardrail": "Guardrail",
     "act": "Act",
+    "log": "Log",
 }
 
 
@@ -284,7 +288,7 @@ def load_application_history() -> pd.DataFrame:
     return df.sort_values("Started", ascending=False).reset_index(drop=True)
 
 
-OUTCOME_COLORS = {"Auto-sent": "#15803d", "Drafted": "#3f3f46", "Flagged": "#b45309"}
+OUTCOME_COLORS = {"Auto-sent": "#7A8450", "Drafted": "#B08A6A", "Flagged": "#D9A441"}
 
 
 # ---------------------------------------------------------------------------
@@ -314,7 +318,9 @@ with header_right:
     st.markdown(status_html, unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-tab_dashboard, tab_run, tab_batch = st.tabs(["Dashboard", "Run agent", "Test suite"])
+tab_dashboard, tab_run, tab_batch = st.tabs(
+    [":material/dashboard: Dashboard", ":material/rocket_launch: Run agent", ":material/fact_check: Test suite"]
+)
 
 # ---------------------------------------------------------------------------
 # Tab 1: Dashboard — application tracking
@@ -364,11 +370,11 @@ with tab_dashboard:
             display_df["Overlap"] = (display_df["Overlap"] * 100).round(0).astype(int).astype(str) + "%"
             st.dataframe(
                 display_df[["Started", "Company", "Role", "Seniority", "Overlap", "Outcome"]],
-                use_container_width=True, hide_index=True, height=340,
+                width="stretch", hide_index=True, height=340,
             )
             filter_row[2].download_button(
                 "Export CSV", data=history.to_csv(index=False), file_name="application_history.csv",
-                mime="text/csv", use_container_width=True,
+                mime="text/csv", width="stretch",
             )
 
         with chart_col:
@@ -385,9 +391,9 @@ with tab_dashboard:
                 )
                 .properties(height=280)
                 .configure_view(strokeWidth=0)
-                .configure_axis(grid=False, domainColor="#e4e4e7", labelColor="#71717a", labelFontSize=11)
+                .configure_axis(grid=False, domainColor="#E8DCC8", labelColor="#6E5D4F", labelFontSize=11)
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width="stretch")
             st.markdown(
                 f'<div class="metric-sub" style="margin-top:-0.5rem;">Average overlap across all runs: {avg_overlap:.0f}%</div>',
                 unsafe_allow_html=True,
@@ -408,7 +414,7 @@ with tab_run:
         kw_col, remote_col, search_col = st.columns([3, 1, 1])
         keyword = kw_col.text_input("Keyword (role or skill)", value="engineer", key="job_search_kw")
         remote_only = remote_col.checkbox("Remote only", key="job_search_remote")
-        if search_col.button("Search", use_container_width=True):
+        if search_col.button("Search", icon=":material/search:", width="stretch"):
             jobs, err = search_jobs(keyword, remote_only=remote_only, limit=6)
             st.session_state.job_search_results = jobs
             st.session_state.job_search_error = err
@@ -441,7 +447,7 @@ with tab_run:
         spreadsheet_id = st.text_input(
             "Google Sheet ID (optional)", value="", help="Leave blank to use local mock tracking."
         )
-        run_clicked = st.button("Run agent", use_container_width=True)
+        run_clicked = st.button("Run agent", icon=":material/bolt:", width="stretch")
         st.markdown("</div>", unsafe_allow_html=True)
 
         review_t = float(os.getenv("GUARDRAIL_THRESHOLD", 0.40)) * 100
@@ -462,7 +468,8 @@ with tab_run:
             render_stepper(progress_placeholder, progress)
 
             def cb(step, status):
-                progress[step] = status
+                mapped = "act" if step == "guardrail" else step
+                progress[mapped] = status
                 render_stepper(progress_placeholder, progress)
 
             with st.spinner("Running pipeline..."):
@@ -474,6 +481,8 @@ with tab_run:
                     spreadsheet_id=spreadsheet_id.strip() or None,
                     progress_cb=cb,
                 )
+            progress["log"] = "done"
+            render_stepper(progress_placeholder, progress)
             st.session_state.last_result = result
             st.session_state.last_resume_text = resume_text
             load_application_history.clear()
@@ -500,7 +509,13 @@ with tab_run:
             )
 
         overview_tab, resume_tab, cover_tab, actions_tab, req_tab = st.tabs(
-            ["Overview", "Tailored resume", "Cover note", "Actions", "Requirements"]
+            [
+                ":material/analytics: Overview",
+                ":material/description: Tailored resume",
+                ":material/mail: Cover note",
+                ":material/checklist: Actions",
+                ":material/tune: Requirements",
+            ]
         )
 
         with overview_tab:
@@ -590,7 +605,7 @@ with tab_batch:
         "Runs the pipeline against every sample JD in eval/sample_jds/ using "
         "eval/sample_resume.txt, for the reliability brief."
     )
-    if st.button("Run test batch"):
+    if st.button("Run test batch", icon=":material/fact_check:"):
         jd_files = sorted(glob.glob(os.path.join("eval", "sample_jds", "*.txt")))
         resume = SAMPLE_RESUME
         rows = []
@@ -626,6 +641,6 @@ with tab_batch:
 
         load_application_history.clear()
         df = pd.DataFrame(rows)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
         passed = sum(1 for r in rows if r["Result"] == "PASS")
         st.caption(f"{passed}/{len(rows)} test JDs passed. Full run details logged to eval/logs/eval_log.json")

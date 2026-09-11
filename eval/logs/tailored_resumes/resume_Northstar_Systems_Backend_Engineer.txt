@@ -1,0 +1,27 @@
+- Built REST APIs in Python using FastAPI, backed by PostgreSQL
+Python, TypeScript, React, FastAPI, Flask, PostgreSQL, PyTorch, Docker,
+across the stack from React frontends to Python backends and SQL databases.
+- Deployed services to AWS using Docker; set up a basic CI pipeline in GitHub Actions
+- Implemented REST API endpoints and PostgreSQL schema for listings and messaging
+- Built a FastAPI backend serving a simple chatbot using prompt engineering
+AWS (EC2, S3), Git, REST API design, basic Kubernetes, CI/CD (GitHub Actions)
+Final-year Computer Science student with hands-on experience building
+Software Engineering Intern — Brightline Analytics (Jun 2025 - Aug 2025)
+- Wrote unit and integration tests, improving backend test coverage by 30%
+Study Buddy Bot (Python, FastAPI)
+- Containerized with Docker for local development
+Jordan Rivera
+jordan.rivera@email.com | (555) 012-3456 | github.com/jordanrivera
+SUMMARY
+full-stack web applications and small machine learning projects. Comfortable
+EXPERIENCE
+Undergraduate Research Assistant — University AI Lab (Jan 2025 - Present)
+- Fine-tuned a small open-source language model (Llama-based) for a course project
+- Ran evaluation experiments comparing prompting strategies, wrote up results
+- Used PyTorch for model training and evaluation scripts
+PROJECTS
+Campus Marketplace (React, TypeScript, Node.js)
+- Built a React + TypeScript frontend with a component-driven design system
+SKILLS
+EDUCATION
+B.S. Computer Science, Expected 2027

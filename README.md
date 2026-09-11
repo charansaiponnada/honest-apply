@@ -161,12 +161,15 @@ the guardrail's flagging behavior shows up in the reliability brief, not just th
 
 ## Design
 
-The UI follows a neutral, shadcn/ui-style system: a single Inter typeface, a
-zinc/neutral base palette, subtle bordered cards instead of filled color blocks, and
-restrained accent colors reserved for state (success, warning, destructive). No emoji or
-decorative icons anywhere in the product surface — status is communicated with small dot
-indicators, outline badges, and plain text, the way a shipped product would rather than a
-demo.
+The UI follows the PRD §8 palette: professional-but-approachable instead of
+generic SaaS-blue — terracotta CTAs, olive/sage success states, a cream
+background, warm charcoal text, golden-amber flags for low-confidence review,
+and warm-ivory cards with soft borders. A single Inter typeface keeps the
+weight scale minimal. Status is communicated with small dot indicators,
+outline badges, and the 4-step Extract → Tailor → Act → Log pipeline stepper,
+so the multi-step agent stays visible during the demo. The palette lives in
+`.streamlit/config.toml` for native widgets and is mirrored as design tokens
+for the custom stepper, cards, badges, and action checklist.
 
 ## MVP vs. production scope
 
