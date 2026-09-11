@@ -19,11 +19,17 @@ Each source is queried independently and wrapped so one source failing
 get results from whichever sources answered, plus a note about which
 failed, rather than the whole search silently returning nothing.
 """
+import json
+import os
 import re
 
 import requests
 
 _TIMEOUT_SECONDS = 15
+# Local record of job URLs already seen, so refreshes can flag genuinely new
+# postings (the "scraper picks up new listings" behavior) instead of re-showing
+# the whole pool as new every time.
+_SEEN_CACHE = os.path.join("eval", "logs", "job_seen.json")
 _TAG_RE = re.compile(r"<[^>]+>")
 # RemoteOK blocks generic default User-Agents; a normal-looking browser UA is
 # required to get real results back instead of an empty/blocked response.
@@ -39,6 +45,31 @@ def _strip_html(text: str) -> str:
     """Job-board descriptions are HTML; extraction/tailoring prompts want plain text."""
     text = _TAG_RE.sub(" ", text or "")
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _load_seen() -> set[str]:
+    if not os.path.exists(_SEEN_CACHE):
+        return set()
+    try:
+        with open(_SEEN_CACHE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    except (json.JSONDecodeError, ValueError, OSError):
+        return set()
+
+
+def _save_seen(urls: set[str]) -> None:
+    os.makedirs(os.path.dirname(_SEEN_CACHE), exist_ok=True)
+    with open(_SEEN_CACHE, "w", encoding="utf-8") as f:
+        json.dump(sorted(urls), f, indent=2)
+
+
+def _posted(job: dict) -> str:
+    """Best-effort posting date as %Y-%m-%d ('' if the source doesn't provide one)."""
+    for key in ("created_at", "publication_date", "date"):
+        raw = job.get(key)
+        if raw:
+            return str(raw)[:10]
+    return ""
 
 
 def _matches(keyword_lower: str, *fields: str) -> bool:
@@ -66,6 +97,7 @@ def _search_arbeitnow(keyword_lower: str, remote_only: bool, limit: int) -> list
                 "company_name": job.get("company_name", "Unknown company"),
                 "location": job.get("location", ""),
                 "remote": bool(job.get("remote")),
+                "posted": _posted(job),
                 "description": _strip_html(job.get("description", "")),
                 "url": job.get("url", ""),
                 "tags": job.get("tags", []) or [],
@@ -95,6 +127,7 @@ def _search_remotive(keyword_lower: str, remote_only: bool, limit: int) -> list[
                 "company_name": job.get("company_name", "Unknown company"),
                 "location": job.get("candidate_required_location", "Remote"),
                 "remote": True,
+                "posted": _posted(job),
                 "description": _strip_html(job.get("description", "")),
                 "url": job.get("url", ""),
                 "tags": job.get("tags", []) or [],
@@ -121,6 +154,7 @@ def _search_remoteok(keyword_lower: str, remote_only: bool, limit: int) -> list[
                 "company_name": job.get("company", "Unknown company"),
                 "location": job.get("location", "Remote"),
                 "remote": True,
+                "posted": _posted(job),
                 "description": _strip_html(job.get("description", "")),
                 "url": job.get("url") or job.get("apply_url", ""),
                 "tags": job.get("tags", []) or [],
@@ -138,18 +172,17 @@ _SOURCES = {
 }
 
 
-def search_jobs(keyword: str, remote_only: bool = False, limit: int = 8) -> tuple[list[dict], str | None]:
+def fetch_pool(limit: int = 60, remote_only: bool = False, keyword: str = "") -> tuple[list[dict], str | None]:
     """
-    Searches all three sources and merges the results (best-effort — a
-    failure in one source doesn't block the others).
+    Fetches a pooled batch of recent listings across all sources, dedupes by
+    URL, sorts newest-first, and marks each listing with `is_new` = True if its
+    URL hasn't been seen before (tracked in _SEEN_CACHE). This is the
+    "scraper" behavior: calling it again later surfaces freshly-posted jobs.
 
-    Returns (jobs, error). jobs is a list of dicts with:
-    {source, title, company_name, location, remote, description, url, tags}
-    error is None if at least one source returned results; otherwise a
-    short human-readable summary of what went wrong.
+    Returns (jobs, error) with the same error semantics as search_jobs.
     """
     keyword_lower = keyword.strip().lower()
-    per_source_limit = max(2, limit // len(_SOURCES) + 1)
+    per_source_limit = max(10, limit // len(_SOURCES))
 
     all_jobs: list[dict] = []
     failures: list[str] = []
@@ -160,12 +193,38 @@ def search_jobs(keyword: str, remote_only: bool = False, limit: int = 8) -> tupl
         except Exception as exc:  # noqa: BLE001 - one bad source shouldn't sink the search
             failures.append(f"{name}: {exc}")
 
-    all_jobs = all_jobs[:limit]
+    seen = _load_seen()
+    by_url: dict[str, dict] = {}
+    for job in all_jobs:
+        key = job.get("url") and f"{job['source']}@{job['url']}"
+        if not key or key in by_url:
+            continue
+        job["is_new"] = job["url"] not in seen
+        by_url[key] = job
 
-    if not all_jobs:
+    jobs = sorted(by_url.values(), key=lambda j: j.get("posted") or "", reverse=True)[:limit]
+
+    if not jobs:
         if failures:
             return [], f"All job sources failed or returned nothing: {'; '.join(failures)}"
-        return [], f"No live listings matched '{keyword}' right now — try a broader keyword, or paste a JD manually."
+        return [], "No live listings matched right now — try a broader keyword, or paste a JD manually."
 
     error = f"Some sources unavailable ({'; '.join(failures)})" if failures else None
-    return all_jobs, error
+    return jobs, error
+
+
+def mark_seen(jobs: list[dict]) -> None:
+    """Records the given listings' URLs as seen, so future pools flag them as old."""
+    if not jobs:
+        return
+    seen = _load_seen()
+    seen.update(j["url"] for j in jobs if j.get("url"))
+    _save_seen(seen)
+
+
+def search_jobs(keyword: str, remote_only: bool = False, limit: int = 8) -> tuple[list[dict], str | None]:
+    """
+    Thin wrapper over fetch_pool kept for scripts/tests compatibility.
+    Returns (jobs, error) — see fetch_pool.
+    """
+    return fetch_pool(limit=limit, remote_only=remote_only, keyword=keyword)

@@ -19,7 +19,7 @@ from agent.tailor import diff_lines  # noqa: E402
 from agent.llm import is_live as llm_is_live  # noqa: E402
 from agent.google_auth import is_live as google_is_live  # noqa: E402
 from agent.slack_action import is_live as slack_is_live  # noqa: E402
-from agent.jobs_search import search_jobs  # noqa: E402
+from agent.jobs_search import fetch_pool, mark_seen  # noqa: E402
 
 EVAL_LOG_PATH = os.path.join("eval", "logs", "eval_log.json")
 
@@ -187,15 +187,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-SAMPLE_RESUME = ""
-resume_path = os.path.join("eval", "sample_resume.txt")
-if os.path.exists(resume_path):
-    SAMPLE_RESUME = open(resume_path).read()
-
-SAMPLE_JD = ""
-jd_path = os.path.join("eval", "sample_jds", "backend_engineer.txt")
-if os.path.exists(jd_path):
-    SAMPLE_JD = open(jd_path).read()
+RESUME_HINT = "Paste your resume (plain text), then run the agent."
 
 # Four pipeline stages, named exactly as the PRD demo expects:
 # Extract -> Tailor -> Act -> Log. The guardrail is the gate that drives the
@@ -403,42 +395,58 @@ with tab_dashboard:
 # Tab 2: Run agent
 # ---------------------------------------------------------------------------
 with tab_run:
-    if "jd_text_area" not in st.session_state:
-        st.session_state.jd_text_area = SAMPLE_JD
-    if "company_input" not in st.session_state:
-        st.session_state.company_input = "Northstar Systems"
-    if "role_input" not in st.session_state:
-        st.session_state.role_input = "Backend Engineer"
+    if "job_pool" not in st.session_state:
+        st.session_state.job_pool = None
+        st.session_state.job_pool_err = None
 
     with st.expander("Search live job boards"):
-        kw_col, remote_col, search_col = st.columns([3, 1, 1])
-        keyword = kw_col.text_input("Keyword (role or skill)", value="engineer", key="job_search_kw")
+        kw_col, remote_col, new_col, refresh_col = st.columns([3, 1, 1, 1])
+        keyword = kw_col.text_input("Filter listings (role, skill, company)", placeholder="e.g. AI engineer", key="job_search_kw")
         remote_only = remote_col.checkbox("Remote only", key="job_search_remote")
-        if search_col.button("Search", icon=":material/search:", width="stretch"):
-            jobs, err = search_jobs(keyword, remote_only=remote_only, limit=6)
-            st.session_state.job_search_results = jobs
-            st.session_state.job_search_error = err
+        new_only = new_col.checkbox("New postings", key="job_search_new")
+        if refresh_col.button("Refresh", icon=":material/refresh:", width="stretch"):
+            st.session_state.job_pool, st.session_state.job_pool_err = fetch_pool(limit=60)
+            st.rerun()
 
-        err = st.session_state.get("job_search_error")
+        pool = st.session_state.job_pool
+        if pool is None:
+            pool, st.session_state.job_pool_err = fetch_pool(limit=60)
+            st.session_state.job_pool = pool
+
+        err = st.session_state.job_pool_err
         if err:
             st.caption(err)
-        for i, job in enumerate(st.session_state.get("job_search_results", [])):
-            row = st.columns([5, 1])
-            tag = " &middot; remote" if job["remote"] else ""
-            row[0].markdown(
-                f'<span class="badge badge-neutral">{job["source"]}</span>&nbsp;'
-                f'<strong>{job["title"]}</strong> &mdash; {job["company_name"]}{tag}',
-                unsafe_allow_html=True,
-            )
-            if row[1].button("Use listing", key=f"use_job_{i}"):
-                st.session_state.jd_text_area = job["description"] or job["title"]
-                st.session_state.company_input = job["company_name"]
-                st.session_state.role_input = job["title"]
-                st.rerun()
+
+        if pool:
+            kw = keyword.strip().lower()
+            filtered = [
+                j for j in pool
+                if (not kw or kw in f"{j['title']} {j['company_name']} {j['location']} {' '.join(j['tags'])}".lower())
+                and (not remote_only or j["remote"])
+                and (not new_only or j["is_new"])
+            ]
+            n_new = sum(1 for j in pool if j["is_new"])
+            st.caption(f"{len(filtered)} listings · {n_new} new since last refresh — filter above as you type")
+            for i, job in enumerate(filtered[:30]):
+                row = st.columns([5, 1])
+                new_tag = ' <span class="badge badge-success">NEW</span>' if job.get("is_new") else ""
+                loc = f" &middot; {job['location']}" if job.get("location") else ""
+                posted = f" &middot; posted {job['posted']}" if job.get("posted") else ""
+                row[0].markdown(
+                    f'<span class="badge badge-neutral">{job["source"]}</span>{new_tag}&nbsp;'
+                    f'<strong>{job["title"]}</strong> &mdash; {job["company_name"]}{loc}{posted}',
+                    unsafe_allow_html=True,
+                )
+                if row[1].button("Use listing", key=f"use_job_{i}"):
+                    st.session_state.jd_text_area = job["description"] or job["title"]
+                    st.session_state.company_input = job["company_name"]
+                    st.session_state.role_input = job["title"]
+                    mark_seen([job])
+                    st.rerun()
 
     col_in, col_meta = st.columns([3, 1])
     with col_in:
-        resume_text = st.text_area("Resume", value=SAMPLE_RESUME, height=260)
+        resume_text = st.text_area("Resume", value="", placeholder=RESUME_HINT, height=260)
         jd_text = st.text_area("Job description (paste text, or pull one above)", key="jd_text_area", height=220)
     with col_meta:
         st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -607,7 +615,8 @@ with tab_batch:
     )
     if st.button("Run test batch", icon=":material/fact_check:"):
         jd_files = sorted(glob.glob(os.path.join("eval", "sample_jds", "*.txt")))
-        resume = SAMPLE_RESUME
+        resume_path = os.path.join("eval", "sample_resume.txt")
+        resume = open(resume_path).read() if os.path.exists(resume_path) else ""
         rows = []
         bar = st.progress(0.0)
         for i, jd_file in enumerate(jd_files):
