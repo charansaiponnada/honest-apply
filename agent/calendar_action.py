@@ -20,11 +20,11 @@ def _append_mock_event(event: dict) -> None:
     events = []
     if os.path.exists(_MOCK_JSON):
         try:
-            events = json.loads(open(_MOCK_JSON).read())
+            events = json.loads(open(_MOCK_JSON, encoding="utf-8").read())
         except json.JSONDecodeError:
             events = []
     events.append(event)
-    with open(_MOCK_JSON, "w") as f:
+    with open(_MOCK_JSON, "w", encoding="utf-8") as f:
         json.dump(events, f, indent=2)
 
 

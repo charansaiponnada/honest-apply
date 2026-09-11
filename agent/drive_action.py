@@ -28,7 +28,7 @@ def save_tailored_resume(company: str, role: str, tailored_resume: str) -> dict:
     if creds is None:
         os.makedirs(_MOCK_DIR, exist_ok=True)
         path = os.path.join(_MOCK_DIR, filename)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(tailored_resume)
         return {
             "status": "mocked",

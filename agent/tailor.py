@@ -61,7 +61,7 @@ JOB REQUIREMENTS JSON:
 {requirements}
 """
     result, live = call_json(
-        prompt, mock_fn=lambda: _mock_tailor(resume_text, requirements)
+        prompt, mock_fn=lambda: _mock_tailor(resume_text, requirements), agent="tailor"
     )
     result.setdefault("tailored_resume", resume_text)
     result.setdefault("cover_note", "")

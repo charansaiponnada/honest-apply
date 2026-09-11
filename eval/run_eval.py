@@ -29,7 +29,7 @@ def _guess_company_role(filename: str) -> tuple[str, str]:
 
 
 def main() -> None:
-    resume_text = open(RESUME_PATH).read()
+    resume_text = open(RESUME_PATH, encoding="utf-8").read()
     jd_files = sorted(glob.glob(os.path.join(SAMPLE_JD_DIR, "*.txt")))
 
     if not jd_files:
@@ -38,7 +38,7 @@ def main() -> None:
 
     rows = []
     for jd_path in jd_files:
-        jd_text = open(jd_path).read()
+        jd_text = open(jd_path, encoding="utf-8").read()
         company, role = _guess_company_role(jd_path)
         result = run_pipeline(
             resume_text=resume_text,

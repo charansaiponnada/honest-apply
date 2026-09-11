@@ -20,7 +20,7 @@ _HEADER = ["company", "role", "jd_source", "date", "status"]
 def _append_mock_csv(row: list[str]) -> None:
     os.makedirs(os.path.dirname(_MOCK_CSV), exist_ok=True)
     is_new = not os.path.exists(_MOCK_CSV)
-    with open(_MOCK_CSV, "a", newline="") as f:
+    with open(_MOCK_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if is_new:
             writer.writerow(_HEADER)

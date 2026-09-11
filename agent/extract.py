@@ -67,7 +67,7 @@ and return ONLY a JSON object (no markdown, no commentary) with this exact shape
 JOB DESCRIPTION:
 \"\"\"{jd_text}\"\"\"
 """
-    result, live = call_json(prompt, mock_fn=lambda: _mock_extract(jd_text))
+    result, live = call_json(prompt, mock_fn=lambda: _mock_extract(jd_text), agent="researcher")
     result.setdefault("skills", [])
     result.setdefault("seniority", "Mid-level")
     result.setdefault("must_haves", [])

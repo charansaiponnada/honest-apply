@@ -63,19 +63,10 @@ and Slack independently.
 ### 1. OpenRouter API key (free, no card required)
 1. Go to [openrouter.ai/keys](https://openrouter.ai/keys), sign up, and generate an API key.
 2. Copy `.env.example` to `.env` and set `OPENROUTER_API_KEY`.
-3. The default model is `meta-llama/llama-3.3-70b-instruct:free` — OpenRouter's most
-   established free open-source model, stable since Dec 2024. Other free open-source
-   options worth trying via `OPENROUTER_MODEL`:
-   - `openai/gpt-oss-20b:free` — Apache 2.0, especially strong at structured/JSON output
-   - `openai/gpt-oss-120b:free` — larger sibling, still free, more capable
-   - `google/gemma-3-27b-it:free` — fast, low latency
-   - `deepseek/deepseek-chat-v3-0324:free` — strong general writing/reasoning
-   - `qwen/qwen3-235b-a22b:free` — strong at analysis/reasoning
-
-   Free-tier models on OpenRouter rotate as providers add and retire them — check
-   [openrouter.ai/models?max_price=0](https://openrouter.ai/models?max_price=0) if a model
-   ID stops working. Any live-call failure (rate limit, retired model, network issue) falls
-   back to the offline mock rather than breaking the run.
+3. The default model is `nvidia/nemotron-3-super-120b-a12b:free` — the best
+   free model on OpenRouter as of Sept 2026 for structured JSON output
+   (tested: valid extract/tailoring JSON in ~5s, 120B MoE, 262k context).
+   Set `OPENROUTER_MODEL` to override.
 
 ### 2. Google Workspace APIs (Gmail, Sheets, Calendar, Drive) — free, no billing
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com).
@@ -132,6 +123,7 @@ the guardrail's flagging behavior shows up in the reliability brief, not just th
 ```
 /
 ├── app.py                     # Streamlit UI
+├── resume.txt                 # Your real resume (drop here, loaded on startup)
 ├── agent/
 │   ├── llm.py                  # OpenRouter wrapper + offline mock fallback
 │   ├── extract.py              # Skill 1: JD extraction
@@ -146,6 +138,17 @@ the guardrail's flagging behavior shows up in the reliability brief, not just th
 │   ├── slack_action.py           # Skill 8: Slack notification
 │   ├── jobs_search.py            # Skill 0: multi-board live job search
 │   └── pipeline.py               # Orchestrates the full flow + eval logging
+├── skills/                    # 9 AI-discoverable agent skills (PRD §6)
+│   ├── jd-parsing/SKILL.md       # Skill 1: JD parsing
+│   ├── resume-tailoring/SKILL.md # Skill 2: resume tailoring
+│   ├── cover-note-generation/SKILL.md  # Skill 3: cover note
+│   ├── gmail-draft/SKILL.md      # Skill 4: Gmail draft
+│   ├── sheets-append/SKILL.md    # Skill 5: Sheets tracking
+│   ├── calendar-followup/SKILL.md # Skill 6: Calendar event
+│   ├── drive-save/SKILL.md       # Skill 7: Drive save
+│   ├── guardrail/SKILL.md        # Skill 8: guardrail/confidence
+│   ├── executor-fit-review/SKILL.md  # Agent 3: LLM fit-review gate
+│   └── eval-logging/SKILL.md     # Skill 9: eval logging
 ├── scripts/
 │   └── check_connections.py     # Preflight status check for all 6 integrations
 ├── eval/
@@ -166,10 +169,10 @@ generic SaaS-blue — terracotta CTAs, olive/sage success states, a cream
 background, warm charcoal text, golden-amber flags for low-confidence review,
 and warm-ivory cards with soft borders. A single Inter typeface keeps the
 weight scale minimal. Status is communicated with small dot indicators,
-outline badges, and the 4-step Extract → Tailor → Act → Log pipeline stepper,
-so the multi-step agent stays visible during the demo. The palette lives in
-`.streamlit/config.toml` for native widgets and is mirrored as design tokens
-for the custom stepper, cards, badges, and action checklist.
+outline badges, and the 3-agent Researcher → Tailor → Executor pipeline
+stepper, so the multi-step agent stays visible during the demo. The palette
+lives in `.streamlit/config.toml` for native widgets and is mirrored as
+design tokens for the custom stepper, cards, badges, and action checklist.
 
 ## MVP vs. production scope
 

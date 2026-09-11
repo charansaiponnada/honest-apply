@@ -32,7 +32,7 @@ def is_live() -> bool:
 
 def _append_mock_log(text: str) -> None:
     os.makedirs(os.path.dirname(_MOCK_LOG), exist_ok=True)
-    with open(_MOCK_LOG, "a") as f:
+    with open(_MOCK_LOG, "a", encoding="utf-8") as f:
         f.write(text + "\n")
 
 

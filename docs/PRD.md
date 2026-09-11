@@ -158,7 +158,7 @@ Since usefulness (20%) and demo clarity (10%) are judged, a clean minimal UI mat
 
 **Key screens/elements for the demo:**
 - Input panel: resume text box + JD text/URL box, single "Run agent" button
-- Live pipeline view: 4-step progress indicator (Extract → Tailor → Act → Log) so judges *see* the multi-step agent working, not just a final output
+- Live pipeline view: 3-agent progress indicator (Researcher → Tailor → Executor) so judges *see* the multi-step agent working across apps, not just a final output
 - Result card: tailored resume diff (before/after), cover note, and a row showing what happened in each app (draft created ✓, sheet logged ✓, reminder set ✓)
 - Confidence badge: green (proceeded automatically) vs amber (flagged for review) — this visually sells your reliability layer
 - Simple eval panel: "9/10 test JDs passed" style summary, screenshot-able for your reliability brief
@@ -194,7 +194,7 @@ Since usefulness (20%) and demo clarity (10%) are judged, a clean minimal UI mat
 - **Reliability & eval (25%):** documented test set + pass rate + failure-mode honesty
 - **Usefulness (20%):** solves a real, personally-validated problem (this is literally your own planned open-source project)
 - **Originality (15%):** the guardrail/confidence-flagging layer + grounding tailoring strictly in extracted JD JSON (anti-hallucination) differentiates it from generic "auto-apply bot" submissions
-- **Demo clarity (10%):** the 4-step live pipeline view exists specifically to make the multi-step agent visible in under 2 minutes
+- **Demo clarity (10%):** the 3-agent live pipeline view exists specifically to make the multi-step agent visible in under 2 minutes
 
 ---
 

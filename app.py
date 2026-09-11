@@ -187,16 +187,25 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-RESUME_HINT = "Paste your resume (plain text), then run the agent."
+_RESUME_FILE = "resume.txt"
+_DEFAULT_RESUME = ""
+if os.path.exists(_RESUME_FILE):
+    with open(_RESUME_FILE, encoding="utf-8") as f:
+        _DEFAULT_RESUME = f.read().strip()
+RESUME_HINT = (
+    f"Drop your resume as {_RESUME_FILE} at project root, or paste text here."
+    if _DEFAULT_RESUME
+    else "Paste your resume (plain text), then run the agent."
+)
 
-# Four pipeline stages, named exactly as the PRD demo expects:
-# Extract -> Tailor -> Act -> Log. The guardrail is the gate that drives the
-# "Act" step; eval logging is the final "Log" step.
+# Three named agents, exactly how the demo brief frames it: a multi-step
+# agent across multiple external apps. Researcher parses the JD, Tailor
+# rewrites the application, Executor gates + dispatches to Gmail/Sheets/
+# Calendar/Drive and notifies Slack.
 STEP_LABELS = {
-    "extract": "Extract",
+    "researcher": "Researcher",
     "tailor": "Tailor",
-    "act": "Act",
-    "log": "Log",
+    "executor": "Executor",
 }
 
 
@@ -254,7 +263,7 @@ def load_application_history() -> pd.DataFrame:
     if not os.path.exists(EVAL_LOG_PATH):
         return pd.DataFrame()
     try:
-        entries = json.loads(open(EVAL_LOG_PATH).read())
+        entries = json.loads(open(EVAL_LOG_PATH, encoding="utf-8").read())
     except json.JSONDecodeError:
         return pd.DataFrame()
     if not entries:
@@ -446,7 +455,7 @@ with tab_run:
 
     col_in, col_meta = st.columns([3, 1])
     with col_in:
-        resume_text = st.text_area("Resume", value="", placeholder=RESUME_HINT, height=260)
+        resume_text = st.text_area("Resume", value=_DEFAULT_RESUME, placeholder=RESUME_HINT, height=260)
         jd_text = st.text_area("Job description (paste text, or pull one above)", key="jd_text_area", height=220)
     with col_meta:
         st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -476,11 +485,10 @@ with tab_run:
             render_stepper(progress_placeholder, progress)
 
             def cb(step, status):
-                mapped = "act" if step == "guardrail" else step
-                progress[mapped] = status
+                progress[step] = status
                 render_stepper(progress_placeholder, progress)
 
-            with st.spinner("Running pipeline..."):
+            with st.spinner("Running 3-agent pipeline..."):
                 result = run_pipeline(
                     resume_text=resume_text,
                     jd_text=jd_text,
@@ -489,8 +497,7 @@ with tab_run:
                     spreadsheet_id=spreadsheet_id.strip() or None,
                     progress_cb=cb,
                 )
-            progress["log"] = "done"
-            render_stepper(progress_placeholder, progress)
+            render_stepper(progress_placeholder, progress)  # executor set by callback
             st.session_state.last_result = result
             st.session_state.last_resume_text = resume_text
             load_application_history.clear()
@@ -543,6 +550,14 @@ with tab_run:
                     unsafe_allow_html=True,
                 )
             st.caption(f"Company: {result['company']}  ·  Role: {result['role']}  ·  Source: {result['jd_source']}")
+            verdict = result.get("executor_verdict", {})
+            if verdict.get("reason"):
+                st.markdown(
+                    f'<div class="card"><strong>Executor agent:</strong> '
+                    f'{verdict.get("recommendation", "").title()} '
+                    f'({verdict.get("confidence", 0.0)*100:.0f}% confidence) — {verdict.get("reason")}</div>',
+                    unsafe_allow_html=True,
+                )
 
         with resume_tab:
             orig_resume_used = st.session_state.get("last_resume_text", resume_text)
@@ -616,11 +631,11 @@ with tab_batch:
     if st.button("Run test batch", icon=":material/fact_check:"):
         jd_files = sorted(glob.glob(os.path.join("eval", "sample_jds", "*.txt")))
         resume_path = os.path.join("eval", "sample_resume.txt")
-        resume = open(resume_path).read() if os.path.exists(resume_path) else ""
+        resume = open(resume_path, encoding="utf-8").read() if os.path.exists(resume_path) else ""
         rows = []
         bar = st.progress(0.0)
         for i, jd_file in enumerate(jd_files):
-            jd_text_b = open(jd_file).read()
+            jd_text_b = open(jd_file, encoding="utf-8").read()
             stem = os.path.splitext(os.path.basename(jd_file))[0]
             role_b = stem.replace("_", " ").title()
             result_b = run_pipeline(
