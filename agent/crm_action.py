@@ -24,11 +24,12 @@ from datetime import date
 
 import requests
 
+from agent import DATA_DIR
 from agent import composio_client as composio
 from agent.utils import SIMULATED, InjectedFault, maybe_fail, retry_with_backoff
 
 _API = "https://api.hubapi.com"
-_MOCK_JSON = os.path.join("eval", "logs", "crm_mock.json")
+_MOCK_JSON = os.path.join(DATA_DIR, "crm_mock.json")
 _TIMEOUT_SECONDS = 15
 _STAGE_DEFAULTS = {
     "drafted": "appointmentscheduled",

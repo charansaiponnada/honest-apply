@@ -10,11 +10,12 @@ import json
 import os
 from datetime import datetime, timedelta
 
+from agent import DATA_DIR
 from agent import composio_client as composio
 from agent.google_auth import get_credentials
 from agent.utils import classify_google_error, is_retryable_google_error, maybe_fail, retry_with_backoff
 
-_MOCK_JSON = os.path.join("eval", "logs", "calendar_mock.json")
+_MOCK_JSON = os.path.join(DATA_DIR, "calendar_mock.json")
 
 
 def _read_mock_events() -> list[dict]:

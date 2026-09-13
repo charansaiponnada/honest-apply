@@ -15,6 +15,8 @@ then act across **Gmail, Google Calendar, HubSpot and Slack**, with each app han
 
 **[Demo video](ADD_VIDEO_LINK_BEFORE_SUBMITTING)** · **[Try it in 60 seconds](#try-it-in-60-seconds)** · **[How the agent plans](#how-the-agent-plans)** · **[Reliability](#reliability-testing)**
 
+<img src="app-screenshots/demo.gif" alt="Honest Apply: three agents plan an application and act across Gmail, Calendar, HubSpot and Slack" width="900" />
+
 Built for the Multi-App AI Agent Hackathon, September 13, 2026.
 
 </div>
@@ -31,10 +33,15 @@ Built for the Multi-App AI Agent Hackathon, September 13, 2026.
 | 04 · Reliability testing | [How we know it works](#reliability-testing) and [docs/RELIABILITY.md](docs/RELIABILITY.md) |
 | 05 · Demo video | [Watch the 2-minute demo](ADD_VIDEO_LINK_BEFORE_SUBMITTING) (script: [script.md](script.md)) |
 
+## Demo video
+
+[![Watch the 2-minute demo](app-screenshots/thumbnail.png)](ADD_VIDEO_LINK_BEFORE_SUBMITTING)
+
 ## Contents
 
 - [Project overview](#project-overview)
 - [Try it in 60 seconds](#try-it-in-60-seconds)
+- [Real results in real accounts](#real-results-in-real-accounts)
 - [How the agent plans](#how-the-agent-plans)
 - [External apps used](#external-apps-used)
 - [What makes it different](#what-makes-it-different)
@@ -81,6 +88,19 @@ uvicorn main:app             # from the repo root
 
 Simulated mode runs the real Researcher, Tailor and Executor. Only the four apps are simulated, enforced per run on the
 server, so a simulated run never touches real accounts even when keys are configured.
+
+## Real results in real accounts
+
+One application from the demo, run with Gmail, Google Calendar, HubSpot and Slack connected through Composio.
+The free LLM quota was used up at the time, so the agents ran their labeled rule-based fallback: the tailored resume
+is a reordering of the original lines rather than an LLM rewrite, and every line still passed the receipts check.
+
+| | |
+|---|---|
+| <img src="app-screenshots/gmail-draft.png" alt="Gmail draft created by the agent" width="440" /> | <img src="app-screenshots/calender.png" alt="Google Calendar follow-up event created by the agent" width="440" /> |
+| **Gmail:** the application draft, "Application: New Grad Software Engineer at APIWorks", with the cover note and tailored resume. Left as a draft: sending needs the user's switch and a recipient. | **Google Calendar:** the follow-up event booked 7 days out, "Follow up: APIWorks – New Grad Software Engineer". |
+| <img src="app-screenshots/hubspot.png" alt="HubSpot deals board showing agent-created deals across stages" width="440" /> | <img src="app-screenshots/slack.png" alt="Slack message from the agent with links" width="440" /> |
+| **HubSpot:** agent-created deals across the pipeline: a new application, deals moved on by the reply loop, and deals closed by undo. | **Slack:** "Drafted, awaiting your send" with the overlap score, what was done, and links to the email and follow-up. |
 
 ## How the agent plans
 
@@ -187,8 +207,23 @@ Copy `.env.example` to `.env`:
 
 Then `python -m scripts.check_connections --ping`.
 
-**Deploy:** one service, `uvicorn main:app --host 0.0.0.0 --port $PORT`, with the `.env` values as environment
-variables. Hosts have no browser for Google OAuth, so paste the contents of `token.json` into `GOOGLE_TOKEN_JSON`.
+### Deploy on Vercel
+
+1. **Import** the GitHub repo in Vercel.
+2. **Framework Preset:** `FastAPI`. **Root Directory:** `./` (the repo root: `main.py` exports the FastAPI `app`, and
+   `pyproject.toml` / `uv.lock` define the dependencies). No build command is needed: the React build is committed in
+   `web/app-dist`, and its `/assets` mount is served from Vercel's CDN.
+3. **Environment variables:** add the ones you use from `.env.example` (for example `COMPOSIO_API_KEY`,
+   `OPENROUTER_API_KEY`, `SLACK_CHANNEL`). None are required: without keys the site runs in simulated mode.
+4. **Deploy**, then open `/`, `/demo` and `/app` on the deployment URL.
+
+On Vercel the app writes its run log and caches to `/tmp` (set automatically; override with `DATA_DIR`). That storage
+is per instance and temporary, so the Tracker's history resets between deployments and cold starts; the Reliability
+page shows the committed eval snapshot in `eval/results/`. Google's local OAuth file flow can't run on a server: use
+Composio Connect, or paste the contents of `token.json` into `GOOGLE_TOKEN_JSON`. Composio sends users back to the
+deployment's own URL after sign-in.
+
+Any other host works too: `uvicorn main:app --host 0.0.0.0 --port $PORT`.
 
 ### Frontend development
 
@@ -236,6 +271,8 @@ docs/                       PRD.md, RELIABILITY.md
 design-system/              UI/UX Pro Max design system
 scripts/check_connections.py
 script.md                   2-minute demo video script
+app-screenshots/            README GIF, thumbnail and screenshots from real connected accounts
+eval/results/               committed eval snapshot (shown when a deployment hasn't run the suite)
 ```
 
 ## Limits and what's next

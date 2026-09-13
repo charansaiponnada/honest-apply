@@ -1,0 +1,393 @@
+{
+  "normal": {
+    "ran_at": "2026-09-14T00:00:13",
+    "faults": [],
+    "total": 10,
+    "passed": 9,
+    "criteria": {
+      "extraction": 9,
+      "faithfulness": 10,
+      "decision": 10,
+      "actions": 10
+    },
+    "rows": [
+      {
+        "jd_file": "backend_engineer.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.4,
+        "outcome": "drafted",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "data_engineer.txt",
+        "seniority": "Senior",
+        "overlap": 0.067,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "frontend_engineer.txt",
+        "seniority": "Senior",
+        "overlap": 0.4,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "fullstack_intern.txt",
+        "seniority": "Entry-level",
+        "overlap": 0.6,
+        "outcome": "drafted",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "ml_research_intern.txt",
+        "seniority": "Entry-level",
+        "overlap": 0.533,
+        "outcome": "drafted",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": false,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": false
+      },
+      {
+        "jd_file": "new_grad_backend.txt",
+        "seniority": "Entry-level",
+        "overlap": 0.467,
+        "outcome": "drafted",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "platform_engineer_bait.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.067,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "product_designer.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.133,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "staff_ml_engineer.txt",
+        "seniority": "Senior",
+        "overlap": 0.4,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "vague_startup.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.1,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      }
+    ]
+  },
+  "faults": {
+    "ran_at": "2026-09-14T00:00:25",
+    "faults": [
+      "gmail",
+      "llm_429"
+    ],
+    "total": 10,
+    "passed": 9,
+    "criteria": {
+      "extraction": 9,
+      "faithfulness": 10,
+      "decision": 10,
+      "actions": 10
+    },
+    "rows": [
+      {
+        "jd_file": "backend_engineer.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.4,
+        "outcome": "partial",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "data_engineer.txt",
+        "seniority": "Senior",
+        "overlap": 0.067,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "frontend_engineer.txt",
+        "seniority": "Senior",
+        "overlap": 0.4,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "fullstack_intern.txt",
+        "seniority": "Entry-level",
+        "overlap": 0.6,
+        "outcome": "partial",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "ml_research_intern.txt",
+        "seniority": "Entry-level",
+        "overlap": 0.533,
+        "outcome": "partial",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": false,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": false
+      },
+      {
+        "jd_file": "new_grad_backend.txt",
+        "seniority": "Entry-level",
+        "overlap": 0.467,
+        "outcome": "partial",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "platform_engineer_bait.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.067,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "product_designer.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.133,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "staff_ml_engineer.txt",
+        "seniority": "Senior",
+        "overlap": 0.4,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      },
+      {
+        "jd_file": "vague_startup.txt",
+        "seniority": "Mid-level",
+        "overlap": 0.1,
+        "outcome": "flagged",
+        "unsupported": 0,
+        "live_llm": false,
+        "fell_back": [
+          "researcher",
+          "tailor",
+          "executor"
+        ],
+        "extraction": true,
+        "faithfulness": true,
+        "decision": true,
+        "actions": true,
+        "passed": true
+      }
+    ]
+  }
+}

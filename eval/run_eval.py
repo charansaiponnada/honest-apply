@@ -29,6 +29,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
+from agent import DATA_DIR  # noqa: E402
 from agent.pipeline import run_pipeline  # noqa: E402
 from agent.utils import ALLOWED_FAULTS, FAULTS  # noqa: E402
 
@@ -36,7 +37,9 @@ EVAL_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_JD_DIR = os.path.join(EVAL_DIR, "sample_jds")
 RESUME_PATH = os.path.join(EVAL_DIR, "sample_resume.txt")
 EXPECTED_PATH = os.path.join(EVAL_DIR, "expected.json")
-SUMMARY_PATH = os.path.join(EVAL_DIR, "logs", "eval_summary.json")
+SUMMARY_PATH = os.path.join(DATA_DIR, "eval_summary.json")
+# Committed snapshot of the last full run, shown when this deployment hasn't run the suite itself (e.g. on Vercel).
+SNAPSHOT_PATH = os.path.join(EVAL_DIR, "results", "eval_summary.json")
 CRITERIA = ("extraction", "faithfulness", "decision", "actions")
 
 
@@ -62,12 +65,13 @@ def _score(result: dict, expected: dict, faults) -> dict:
 
 
 def load_summary() -> dict:
-    if not os.path.exists(SUMMARY_PATH):
-        return {}
-    try:
-        return json.loads(open(SUMMARY_PATH, encoding="utf-8").read())
-    except json.JSONDecodeError:
-        return {}
+    for path in (SUMMARY_PATH, SNAPSHOT_PATH):
+        if os.path.exists(path):
+            try:
+                return json.loads(open(path, encoding="utf-8").read())
+            except json.JSONDecodeError:
+                continue
+    return {}
 
 
 def run_batch(faults=(), pace: float = 0.0) -> dict:

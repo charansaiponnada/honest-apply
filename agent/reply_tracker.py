@@ -17,6 +17,7 @@ import json
 import os
 from datetime import datetime
 
+from agent import DATA_DIR
 from agent import composio_client as composio
 from agent.calendar_action import undo_event
 from agent.crm_action import set_deal_stage
@@ -25,7 +26,7 @@ from agent.pipeline import load_eval_log, save_eval_log
 from agent.slack_action import send_text
 from agent.utils import SIMULATED, classify_google_error, is_retryable_google_error, retry_with_backoff
 
-_MOCK_REPLIES = os.path.join("eval", "logs", "mock_replies.json")
+_MOCK_REPLIES = os.path.join(DATA_DIR, "mock_replies.json")
 
 
 def _mock_replied() -> set[str]:

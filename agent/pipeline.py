@@ -21,6 +21,7 @@ import re
 import uuid
 from datetime import datetime
 
+from agent import DATA_DIR
 from agent.calendar_action import create_followup_event
 from agent.composio_client import connected_apps
 from agent.crm_action import candidate_from_resume, log_application
@@ -34,7 +35,7 @@ from agent.slack_action import notify_run_result
 from agent.tailor import resume_lines, tailor_application
 from agent.utils import FAULTS, SIMULATED
 
-EVAL_LOG_PATH = os.path.join("eval", "logs", "eval_log.json")
+EVAL_LOG_PATH = os.path.join(DATA_DIR, "eval_log.json")
 
 
 def load_eval_log() -> list[dict]:

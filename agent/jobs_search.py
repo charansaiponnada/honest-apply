@@ -25,11 +25,13 @@ import re
 
 import requests
 
+from agent import DATA_DIR
+
 _TIMEOUT_SECONDS = 15
 # Local record of job URLs already seen, so refreshes can flag genuinely new
 # postings (the "scraper picks up new listings" behavior) instead of re-showing
 # the whole pool as new every time.
-_SEEN_CACHE = os.path.join("eval", "logs", "job_seen.json")
+_SEEN_CACHE = os.path.join(DATA_DIR, "job_seen.json")
 _TAG_RE = re.compile(r"<[^>]+>")
 # RemoteOK blocks generic default User-Agents; a normal-looking browser UA is
 # required to get real results back instead of an empty/blocked response.

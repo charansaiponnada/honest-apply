@@ -7,4 +7,6 @@ __pycache__/
 eval/logs/*.json
 frontend/node_modules/
 frontend/dist/
+# 63 MB source recording; the README uses the compressed app-screenshots/demo.gif
+app-screenshots/job-intro.gif
 !eval/logs/.gitkeep

@@ -13,10 +13,11 @@ from functools import lru_cache
 
 import requests
 
+from agent import DATA_DIR
 from agent import composio_client as composio
 from agent.utils import SIMULATED, InjectedFault, maybe_fail, retry_with_backoff
 
-_MOCK_LOG = os.path.join("eval", "logs", "slack_mock.log")
+_MOCK_LOG = os.path.join(DATA_DIR, "slack_mock.log")
 _TIMEOUT_SECONDS = 10
 _SLACK_LINK = re.compile(r"<(https?://[^|>]+)\|([^>]+)>")
 
@@ -71,7 +72,7 @@ def send_text(text: str, user_id: str = "", channel: str = "") -> dict:
         os.makedirs(os.path.dirname(_MOCK_LOG), exist_ok=True)
         with open(_MOCK_LOG, "a", encoding="utf-8") as f:
             f.write(text + "\n")
-        return {"status": "mocked", "detail": "[mock] Logged to eval/logs/slack_mock.log (no Slack connected).", "live": False}
+        return {"status": "mocked", "detail": f"[mock] Logged to {_MOCK_LOG} (no Slack connected).", "live": False}
     return {"status": "ok", "detail": "Slack notification sent.", "live": True}
 
 

@@ -15,6 +15,7 @@ import os
 import re
 from functools import lru_cache
 
+from agent import DATA_DIR
 from agent.utils import SIMULATED
 
 APP_TOOLKITS = {"gmail": "gmail", "calendar": "googlecalendar", "crm": "hubspot", "slack": "slack"}
@@ -24,7 +25,7 @@ TOOL_SLUGS = (
     "HUBSPOT_CREATE_DEAL", "HUBSPOT_UPDATE_DEAL",
     "SLACK_FIND_CHANNELS", "SLACK_SEND_MESSAGE",
 )
-_AUTH_CONFIG_CACHE = os.path.join("eval", "logs", "composio_auth_configs.json")
+_AUTH_CONFIG_CACHE = os.path.join(DATA_DIR, "composio_auth_configs.json")
 _USER_ID = re.compile(r"^[\w.@+-]{1,200}$")
 
 

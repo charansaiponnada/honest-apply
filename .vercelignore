@@ -1,0 +1,9 @@
+# Not needed by the deployed FastAPI app (keeps the upload and function bundle small)
+.venv/
+frontend/node_modules/
+app-screenshots/
+eval/logs/
+.agents/
+.claude/
+design-system/
+docs/

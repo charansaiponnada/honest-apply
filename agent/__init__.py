@@ -10,6 +10,10 @@ whole process. Set ALLOW_IPV6=1 to keep the default behavior.
 import os
 import socket
 
+# Where runtime files go: run log, mock app outputs, caches. Serverless hosts (Vercel) only allow writes under /tmp,
+# so they get a /tmp folder; locally it stays eval/logs. Override with DATA_DIR.
+DATA_DIR = os.getenv("DATA_DIR") or (os.path.join("/tmp", "honest-apply") if os.getenv("VERCEL") else os.path.join("eval", "logs"))
+
 if os.getenv("ALLOW_IPV6", "").strip() != "1":
     import urllib3.util.connection as _urllib3_connection
 
