@@ -26,7 +26,7 @@ from agent.crm_action import is_live as crm_is_live  # noqa: E402
 from agent.google_auth import is_live as google_is_live  # noqa: E402
 from agent.guardrail import _auto_send_threshold, _threshold  # noqa: E402
 from agent.jobs_search import fetch_pool  # noqa: E402
-from agent.llm import _model_name, is_live as llm_is_live  # noqa: E402
+from agent.llm import _model_name, _quota_exhausted, is_live as llm_is_live  # noqa: E402
 from agent.pipeline import load_eval_log, run_pipeline  # noqa: E402
 from agent.reply_tracker import simulate_reply, sync_replies  # noqa: E402
 from agent.slack_action import is_live as slack_is_live  # noqa: E402
@@ -58,8 +58,8 @@ def agent_app():
 @app.get("/api/status")
 def status():
     return {
-        "llm": llm_is_live(),
-        "model": _model_name(),
+        "llm": llm_is_live() and not _quota_exhausted(),
+        "model": _model_name() + (" (daily quota used up: rule-based fallback)" if _quota_exhausted() else ""),
         "google": google_is_live(),
         "crm": crm_is_live(),
         "slack": slack_is_live(),

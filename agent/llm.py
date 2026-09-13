@@ -94,6 +94,12 @@ def _chat(agent: str, messages: list[dict], system_suffix: str = "", **extra) ->
         resp = requests.post(_API_URL, headers=headers, json=body, timeout=_TIMEOUT_SECONDS)
         if (resp.status_code == 429 or resp.status_code >= 500) and not last:
             delay = _retry_delay(resp, attempt)
+            if delay is None:
+                _mark_limited(resp)
+                raise RuntimeError(
+                    f"LLM quota used up ({resp.headers.get('X-RateLimit-Limit')} requests), resets in "
+                    f"{(_limited_until - time.time()) / 3600:.1f}h; using rule-based fallback until then"
+                )
             print(f"[llm] HTTP {resp.status_code}, retry {attempt+1}/{_MAX_RETRIES - 1} in {delay:.0f}s...")
             time.sleep(delay)
             continue
@@ -111,12 +117,32 @@ def _chat(agent: str, messages: list[dict], system_suffix: str = "", **extra) ->
     raise RuntimeError("unreachable")  # pragma: no cover - the last attempt returns or raises
 
 
-def _retry_delay(resp, attempt: int) -> float:
-    """Honor Retry-After when the provider sends it, else 5s, 15s, 30s."""
+def _retry_delay(resp, attempt: int) -> float | None:
+    """Seconds to wait before retrying, or None when the quota resets too far out to wait for
+    (e.g. OpenRouter's free-tier daily cap). Honors Retry-After, else 5s, 15s, 30s."""
+    reset_ms = str(resp.headers.get("X-RateLimit-Reset", ""))
+    if resp.status_code == 429 and str(resp.headers.get("X-RateLimit-Remaining")) == "0" and reset_ms.isdigit():
+        wait = int(reset_ms) / 1000 - time.time()
+        if wait > 60:
+            return None
+        return max(1.0, wait)
     try:
         return min(60.0, float(resp.headers.get("Retry-After", "")))
     except ValueError:
         return min(30.0, 5.0 * 3 ** attempt)
+
+
+def _mark_limited(resp) -> None:
+    """Skip live calls entirely until the provider's quota resets, so each agent falls back instantly."""
+    global _limited_until
+    _limited_until = int(resp.headers["X-RateLimit-Reset"]) / 1000
+
+
+_limited_until = 0.0  # epoch seconds; set when the quota is used up and resets far in the future
+
+
+def _quota_exhausted() -> bool:
+    return time.time() < _limited_until
 
 
 def _fault_active() -> bool:
@@ -134,7 +160,7 @@ def call_json(prompt: str, mock_fn, agent: str = "researcher") -> tuple[dict, bo
 
     Returns (result_dict, used_live_llm: bool).
     """
-    if _fault_active() or not is_live():
+    if _fault_active() or _quota_exhausted() or not is_live():
         return mock_fn(), False
     try:
         message = _chat(agent, [{"role": "user", "content": prompt}], system_suffix=_ALWAYS_JSON,
@@ -153,7 +179,7 @@ def call_tools(prompt: str, tools: list[dict], agent: str = "executor") -> tuple
     An empty list with used_live_llm=False means "no live decision" — the
     caller falls back to its deterministic plan.
     """
-    if _fault_active() or not is_live():
+    if _fault_active() or _quota_exhausted() or not is_live():
         return [], False
 
     # Many models emit one tool call per turn, so keep the conversation going: acknowledge each call
@@ -204,4 +230,17 @@ if __name__ == "__main__":
     observed = '[[\n\n{\n  "name": "create_gmail_draft",\n  "parameters": {}\n}\n]'  # real reply from a free provider
     assert _TEXT_TOOL_NAME.findall(observed) == ["create_gmail_draft"]
     assert _TEXT_TOOL_NAME.findall('DONE') == []
+
+    class _Resp:  # minimal stand-in for requests.Response
+        def __init__(self, status: int, headers: dict):
+            self.status_code, self.headers = status, headers
+
+    far_reset = str(int((time.time() + 5 * 3600) * 1000))  # the real daily-cap case: resets hours away
+    near_reset = str(int((time.time() + 20) * 1000))
+    assert _retry_delay(_Resp(429, {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": far_reset}), 0) is None
+    assert 1.0 <= _retry_delay(_Resp(429, {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": near_reset}), 0) <= 21
+    assert _retry_delay(_Resp(429, {"Retry-After": "7"}), 0) == 7.0
+    assert _retry_delay(_Resp(503, {}), 1) == 15.0
+    _mark_limited(_Resp(429, {"X-RateLimit-Reset": far_reset}))
+    assert _quota_exhausted() and call_json("{}", mock_fn=lambda: {"mock": True}) == ({"mock": True}, False)
     print("llm text tool-call parser self-check passed")

@@ -45,8 +45,63 @@ Under faults, the 5 applications that pass every gate end as `partial`: Gmail re
 classified 503 after retries, while Calendar, CRM and Slack complete and Slack says what failed.
 The 5 that should be flagged are still flagged.
 
-Re-run with a live `OPENROUTER_API_KEY` before judging and add the numbers here; live runs use the
-same four checks.
+### Live LLM run (partial, reported as measured)
+
+One full live run of the suite scored **7/10** (extraction 9, faithfulness 10, decision 8, actions 10):
+
+- `backend_engineer` and `fullstack_intern` (all agents live, 75% and 100% overlap) were wrongly
+  flagged: the receipts check read cover-letter words ("Mid-level", "Hiring Team") as claims.
+  Fixed afterwards, with a self-check.
+- `ml_research_intern` failed extraction after the Researcher fell back on a malformed provider
+  response. Empty completions are now retried.
+- From the sixth job on, OpenRouter's free tier returned 429 and agents fell back to rule-based mode.
+  The run still completed with no crashes and correct gate decisions, and the per-job fallback
+  column in `eval/run_eval.py` shows exactly which agent fell back.
+
+The free tier's daily cap (50 requests) was used up before a clean live re-run with these fixes,
+and it resets after the submission deadline. So the headline table above is the rule-based path,
+the live run is reported as measured, and a paced live re-run
+(`python -m eval.run_eval --pace 25`) is the first thing to do with a fresh quota.
+
+## Live end-to-end run in real accounts (Sept 13, 2026)
+
+One application run through the full agent on the live LLM, acting in a real user's apps connected
+through Composio (`agent/pipeline.py`, run `8b7f66ca`, job `new_grad_backend`, sending disabled):
+
+| Step | Result |
+|---|---|
+| Researcher, Tailor, Executor | all on the live model (`nvidia/nemotron-3-super-120b-a12b:free`) |
+| Receipts | 27/27 tailored lines traced to the original resume; faithful |
+| Gmail | draft created in the connected account |
+| Google Calendar | follow-up event created for 7 days later, linked to the email |
+| HubSpot | deal created at the *drafted* stage |
+| Slack | outcome posted to the connected workspace |
+| **Undo** | draft deleted, event deleted, deal moved to closed-lost, Slack notified |
+
+A read-only Gmail fetch through the same connection also succeeded, and the Composio preflight
+(`scripts/check_connections.py --ping`) confirmed all 10 tools the agent calls exist with the
+parameters it sends.
+
+**Executor tool calling, live:** the model picked `create_gmail_draft`, `schedule_followup` and
+`log_crm_deal` over a multi-turn loop in two separate planning-only probes.
+
+### Bugs live runs found (and the fixes)
+
+Mock-mode tests passed before any of these were visible. Each was reproduced from a real run, then
+fixed with a self-check that fails without the fix.
+
+| Found in a live run | Effect | Fix |
+|---|---|---|
+| Model returned the resume with literal `\n` instead of line breaks | receipts saw one line, blocked a good application | Tailor repairs double-escaped newlines |
+| Cover note said "FastAPI-powered", "React/TypeScript" | real skills flagged as unsupported | receipts split words on `-` and `/` |
+| "Education" vs "EDUCATION" | heading had no receipt | case-insensitive line matching |
+| "RESTful" when the resume says "REST" | truthful rewording blocked | word forms of named skills accepted; invented words still blocked |
+| "Dear Hiring Team", "Mid-level role" in cover notes | two good fits flagged in the live eval | cover-letter and seniority words exempt; job-post skills still checked |
+| Provider returned tool calls as JSON text, and one call per turn | Executor silently fell back to deterministic dispatch | multi-turn tool loop that also parses text tool calls against the offered tools |
+| Free-tier 429s with 2s/4s retries; a 200 response with no `choices` | later eval jobs fell back to rule-based agents; one crash-to-fallback | `Retry-After`, 5s/15s/30s backoff, retry 5xx and empty completions; `--pace` for eval |
+| OpenRouter free tier: 50 requests/day, used up mid-day (resets 00:00 UTC) | every call retried ~50s before falling back, so one app run took minutes | a 429 whose reset is hours away skips retries; all agents fall back instantly until the reset |
+| First Composio key was a consumer (`ck_`) key | every tool call 401 | preflight now reports a rejected key in one clear line |
+| `HUBSPOT_UPDATE_DEAL` expects `dealId` + `properties` | reply tracker and undo would have failed | parameters corrected after the preflight printed the real schema |
 
 ## How reliability is built in
 
