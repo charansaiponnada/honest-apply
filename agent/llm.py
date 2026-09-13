@@ -30,7 +30,7 @@ from agent.utils import FAULTS
 _API_URL = "https://openrouter.ai/api/v1/chat/completions"
 _DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 _TIMEOUT_SECONDS = 90
-_MAX_RETRIES = 3
+_MAX_RETRIES = 4  # waits 5s, 15s, 30s: free-tier limits reset per minute, so short backoffs just fail again
 
 # One persona per agent in the 3-agent team.
 _AGENT_SYSTEM_PROMPTS = {
@@ -90,15 +90,33 @@ def _chat(agent: str, messages: list[dict], system_suffix: str = "", **extra) ->
         **extra,
     }
     for attempt in range(_MAX_RETRIES):
+        last = attempt == _MAX_RETRIES - 1
         resp = requests.post(_API_URL, headers=headers, json=body, timeout=_TIMEOUT_SECONDS)
-        if resp.status_code == 429 and attempt < _MAX_RETRIES - 1:
-            delay = 2.0 * (2 ** attempt)
-            print(f"[llm] 429 rate-limited, retry {attempt+1}/{_MAX_RETRIES} in {delay:.0f}s...")
+        if (resp.status_code == 429 or resp.status_code >= 500) and not last:
+            delay = _retry_delay(resp, attempt)
+            print(f"[llm] HTTP {resp.status_code}, retry {attempt+1}/{_MAX_RETRIES - 1} in {delay:.0f}s...")
             time.sleep(delay)
             continue
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]
-    raise RuntimeError("unreachable")  # pragma: no cover - last attempt raises above
+        data = resp.json()
+        if data.get("choices"):
+            return data["choices"][0]["message"]
+        # Free providers sometimes answer 200 with an error body instead of a completion.
+        reason = str(data.get("error") or data)[:200]
+        if last:
+            raise RuntimeError(f"no completion returned: {reason}")
+        delay = _retry_delay(resp, attempt)
+        print(f"[llm] no completion ({reason}), retry {attempt+1}/{_MAX_RETRIES - 1} in {delay:.0f}s...")
+        time.sleep(delay)
+    raise RuntimeError("unreachable")  # pragma: no cover - the last attempt returns or raises
+
+
+def _retry_delay(resp, attempt: int) -> float:
+    """Honor Retry-After when the provider sends it, else 5s, 15s, 30s."""
+    try:
+        return min(60.0, float(resp.headers.get("Retry-After", "")))
+    except ValueError:
+        return min(30.0, 5.0 * 3 ** attempt)
 
 
 def _fault_active() -> bool:

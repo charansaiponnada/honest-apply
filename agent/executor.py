@@ -28,6 +28,14 @@ _LINE_CUTOFF = 0.3
 # "/" and "-" split words, so "FastAPI-powered" and "React/TypeScript" are checked as their parts
 _WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9+#.%&]*")
 _SENTENCE_BREAKS = {"", ".", "!", "?", ":", ";", "-", "•", "–", "—", "(", "|", '"'}
+# Cover-letter and seniority vocabulary: capitalized in letters ("Dear Hiring Team", "Mid-level role")
+# but never a claim about the candidate. Job-post skills are deliberately NOT exempt.
+# ponytail: fixed list, extend when a live run blocks another letter convention
+_LETTER_WORDS = {
+    "dear", "hiring", "team", "manager", "managers", "recruiter", "recruiting", "sincerely", "regards",
+    "best", "thank", "thanks", "hello", "hi", "mid", "senior", "junior", "entry", "level", "intern",
+    "internship", "position", "role", "opportunity", "application", "resume", "cover", "letter",
+}
 
 
 def _claim_tokens(text: str) -> set[str]:
@@ -73,7 +81,7 @@ def check_receipts(original_resume: str, tailoring: dict, exclude=()) -> tuple[l
     src = resume_lines(original_resume)
     src_lower = [s.lower() for s in src]  # match case-insensitively: "Education" is the "EDUCATION" line
     original_lower = original_resume.lower()
-    excluded = {w.lower() for phrase in exclude for w in _WORD.findall(phrase or "")}
+    excluded = {w.lower() for phrase in exclude for w in _WORD.findall(phrase or "")} | _LETTER_WORDS
 
     cited = {}
     for entry in tailoring.get("evidence") or []:
@@ -127,7 +135,8 @@ def execute_review(original_resume: str, tailoring: dict, requirements: dict, gu
                    company: str = "", role: str = "") -> tuple[dict, bool]:
     """Returns (verdict, used_live_llm). verdict = {recommendation, confidence,
     reason, faithful, unsupported_claims, receipts, llm_flags}."""
-    receipts, unsupported = check_receipts(original_resume, tailoring, exclude=(company, role))
+    receipts, unsupported = check_receipts(original_resume, tailoring,
+                                           exclude=(company, role, requirements.get("seniority", "")))
 
     prompt = f"""Review this tailored job application before it is dispatched to external apps.
 Return ONLY a JSON object of this exact shape:
@@ -236,6 +245,13 @@ if __name__ == "__main__":
     padded_note = dict(honest, cover_note="I have 5 years of AWS experience.")
     _, bad = check_receipts(original, padded_note)
     assert bad and "aws" in bad[-1].lower(), bad
+
+    # letter conventions from live runs pass ("Dear Hiring Team", "Mid-level"); an invented tool in the same note doesn't
+    letter = "Dear Hiring Team, I am excited about this Mid-level role at Ledgerline. I build APIs with FastAPI."
+    _, bad = check_receipts(original, dict(honest, cover_note=letter), exclude=("Ledgerline", "Backend Engineer", "Mid-level"))
+    assert not bad, bad
+    _, bad = check_receipts(original, dict(honest, cover_note=letter + " I also run Kafka."), exclude=("Ledgerline",))
+    assert bad and "kafka" in bad[-1].lower(), bad
 
     # a word form of a real skill passes ("RESTful" <- "REST"); an invented word doesn't
     rest = "- Built REST APIs in Python using FastAPI"

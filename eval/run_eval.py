@@ -20,6 +20,7 @@ import glob
 import json
 import os
 import sys
+import time
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -69,7 +70,8 @@ def load_summary() -> dict:
         return {}
 
 
-def run_batch(faults=()) -> dict:
+def run_batch(faults=(), pace: float = 0.0) -> dict:
+    """pace: seconds to wait between jobs, so a live run stays under free-tier LLM rate limits."""
     resume_text = open(RESUME_PATH, encoding="utf-8").read()
     expected_all = json.loads(open(EXPECTED_PATH, encoding="utf-8").read()) if os.path.exists(EXPECTED_PATH) else {}
 
@@ -79,6 +81,8 @@ def run_batch(faults=()) -> dict:
     rows = []
     try:
         for jd_path in sorted(glob.glob(os.path.join(SAMPLE_JD_DIR, "*.txt"))):
+            if rows and pace:
+                time.sleep(pace)
             name = os.path.basename(jd_path)
             expected = expected_all.get(name, {})
             try:
@@ -130,12 +134,14 @@ def run_batch(faults=()) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--faults", default="", help=f"comma-separated, from: {', '.join(ALLOWED_FAULTS)}")
-    faults = tuple(f for f in parser.parse_args().faults.split(",") if f)
+    parser.add_argument("--pace", type=float, default=0.0, help="seconds between jobs (use ~20 for a live free-tier run)")
+    args = parser.parse_args()
+    faults = tuple(f for f in args.faults.split(",") if f)
     unknown = set(faults) - set(ALLOWED_FAULTS)
     if unknown:
         parser.error(f"unknown faults: {', '.join(sorted(unknown))}")
 
-    summary = run_batch(faults)
+    summary = run_batch(faults, pace=args.pace)
     header = f"{'JD FILE':30} {'SENIORITY':12} {'OVERLAP':8} {'OUTCOME':10} {'EXTRACT':8} {'FAITHFUL':9} {'DECISION':9} {'ACTIONS':8} RESULT"
     print(header)
     print("-" * len(header))
