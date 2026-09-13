@@ -181,13 +181,18 @@ export function DemoPage() {
   }, [reload])
 
   useEffect(() => store.set("demoTheme", theme), [theme])
-  useEffect(() => store.set("demoMode", simulate ? "simulated" : "live"), [simulate])
 
   useEffect(() => {
     store.set("userId", userId)
     store.set("slackChannel", slackChannel)
     const timer = setTimeout(() => {
-      api<Connections>(`/api/connections?user_id=${encodeURIComponent(userId)}`).then(setConnections).catch(() => undefined)
+      api<Connections>(`/api/connections?user_id=${encodeURIComponent(userId)}`)
+        .then((c) => {
+          setConnections(c)
+          // No saved choice yet: use live apps when all four are connected, otherwise stay simulated (fresh clones).
+          if (!store.get("demoMode")) setSimulate(!Object.values(c.apps).every((a) => a.via === "composio"))
+        })
+        .catch(() => undefined)
     }, 400)
     return () => clearTimeout(timer)
   }, [userId, slackChannel])
@@ -661,7 +666,14 @@ export function DemoPage() {
           </Badge>
           <div className="ml-auto flex items-center gap-3">
             <Field orientation="horizontal" className="w-auto">
-              <Switch id="demo-live" checked={!simulate} onCheckedChange={(checked: boolean) => setSimulate(!checked)} />
+              <Switch
+                id="demo-live"
+                checked={!simulate}
+                onCheckedChange={(checked: boolean) => {
+                  setSimulate(!checked)
+                  store.set("demoMode", checked ? "live" : "simulated")
+                }}
+              />
               <FieldLabel htmlFor="demo-live" className="whitespace-nowrap">
                 {simulate ? "Simulated" : "Live apps"}
               </FieldLabel>
