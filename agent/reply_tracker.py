@@ -116,10 +116,13 @@ def sync_replies() -> dict:
 
         refs = entry.get("refs") or {}
         results = {}
-        if refs.get("crm"):
-            results["crm"] = set_deal_stage(refs["crm"], "replied")
-        if refs.get("calendar"):
-            results["calendar"] = undo_event(refs["calendar"])
+        for app, step in (("crm", lambda ref: set_deal_stage(ref, "replied")), ("calendar", undo_event)):
+            if not refs.get(app):
+                continue
+            try:
+                results[app] = step(refs[app])
+            except Exception as exc:  # noqa: BLE001 - one app failing shouldn't stop the reply loop (same as undo)
+                results[app] = {"status": "error", "detail": f"Reply update failed: {classify_google_error(exc)}"}
         text = f":tada: *Reply received* — {entry['role']} @ {entry['company']}. Follow-up reminder cancelled, CRM deal moved to replied."
         if link:
             text += f"\n<{link}|Open the reply>"

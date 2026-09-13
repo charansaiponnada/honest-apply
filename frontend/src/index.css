@@ -8,6 +8,8 @@
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+    --color-kpi-emerald: var(--kpi-emerald);
+    --color-kpi-yellow: var(--kpi-yellow);
     --color-cta: var(--cta);
     --color-cta-foreground: var(--cta-foreground);
     --color-sidebar-ring: var(--sidebar-ring);
@@ -70,6 +72,8 @@
     --accent-foreground: #9a3412;
     --cta: #c2410c;
     --cta-foreground: #ffffff;
+    --kpi-emerald: #047857;
+    --kpi-yellow: #a16207;
     --destructive: oklch(0.577 0.245 27.325);
     --border: #cfe7e2;
     --input: #cfe7e2;
@@ -122,6 +126,60 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* /demo only: a black stage with white text and emerald / yellow KPIs, plus a light variant.
+   Scoped to the page wrapper so the dashboard keeps its own design system. */
+.demo-theme-dark {
+    color-scheme: dark;
+    --background: #000000;
+    --foreground: #fafafa;
+    --card: #0a0a0a;
+    --card-foreground: #fafafa;
+    --popover: #0a0a0a;
+    --popover-foreground: #fafafa;
+    --primary: #10b981;
+    --primary-foreground: #022c22;
+    --secondary: #18181b;
+    --secondary-foreground: #fafafa;
+    --muted: #18181b;
+    --muted-foreground: #a1a1aa;
+    --accent: #facc15;
+    --accent-foreground: #1a1500;
+    --destructive: #f87171;
+    --border: #27272a;
+    --input: #27272a;
+    --ring: #10b981;
+    --chart-1: #10b981;
+    --chart-2: #facc15;
+    --kpi-emerald: #34d399;
+    --kpi-yellow: #facc15;
+}
+
+.demo-theme-light {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --popover: #ffffff;
+    --popover-foreground: #0a0a0a;
+    --primary: #047857;
+    --primary-foreground: #ffffff;
+    --secondary: #f4f4f5;
+    --secondary-foreground: #18181b;
+    --muted: #f4f4f5;
+    --muted-foreground: #52525b;
+    --accent: #fef9c3;
+    --accent-foreground: #713f12;
+    --destructive: #dc2626;
+    --border: #e4e4e7;
+    --input: #e4e4e7;
+    --ring: #047857;
+    --chart-1: #047857;
+    --chart-2: #a16207;
+    --kpi-emerald: #047857;
+    --kpi-yellow: #a16207;
 }
 
 @layer base {

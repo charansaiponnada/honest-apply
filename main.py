@@ -101,6 +101,11 @@ def agent_app():
     return _spa("app.html")
 
 
+@app.get("/demo", include_in_schema=False)
+def demo_page():
+    return _spa("app.html")
+
+
 @app.get("/api/status")
 def status():
     return {
@@ -122,6 +127,23 @@ def defaults():
     if not resume.exists():
         resume = ROOT / "eval" / "sample_resume.txt"
     return {"resume": resume.read_text(encoding="utf-8").strip()}
+
+
+# Fixed, repeatable job posts for the /demo walkthrough (from the eval set): one strong fit for the sample
+# resume, one that asks for tools and certifications the resume doesn't have.
+_DEMO_SCENARIOS = {
+    "good_fit": ("new_grad_backend.txt", "APIWorks", "New Grad Software Engineer"),
+    "bait": ("platform_engineer_bait.txt", "CloudOps Inc", "Platform Engineer"),
+}
+
+
+@app.get("/api/demo/scenarios")
+def demo_scenarios():
+    jd_dir = ROOT / "eval" / "sample_jds"
+    return {
+        key: {"company": company, "role": role, "jd_text": (jd_dir / filename).read_text(encoding="utf-8")}
+        for key, (filename, company, role) in _DEMO_SCENARIOS.items()
+    }
 
 
 @app.get("/api/jobs")
@@ -181,6 +203,7 @@ class RunRequest(BaseModel):
     user_id: str = Field(**_USER_ID)
     slack_channel: str = Field(**_SLACK_CHANNEL)
     github_username: str = Field(**_GITHUB)
+    allow_duplicate: bool = False  # /demo re-runs the same job; real runs keep the duplicate gate
 
 
 @app.post("/api/run")
@@ -201,6 +224,7 @@ async def run(req: RunRequest):
             user_id=req.user_id,
             slack_channel=req.slack_channel,
             github_username=req.github_username,
+            dedup=not req.allow_duplicate,
             progress_cb=emit,
         )
         emit({"type": "result", "result": result})
