@@ -1,7 +1,8 @@
-streamlit>=1.37
+fastapi>=0.115
+uvicorn[standard]>=0.30
 requests>=2.32
 google-api-python-client>=2.140
 google-auth-oauthlib>=1.2
 google-auth-httplib2>=0.2
 python-dotenv>=1.0
-pandas>=2.2
+composio>=0.21

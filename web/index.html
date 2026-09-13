@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Honest Apply · The job agent that won't lie for you</title>
+  <meta name="description" content="Three AI agents tailor your real experience to a job, prove every line, and act across Gmail, Calendar, HubSpot CRM and Slack.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <style>
+    .nav { position: absolute; inset: 0 0 auto; z-index: 5; }
+    .nav-inner { max-width: 1240px; margin: 0 auto; padding: 1.1rem 20px; display: flex; align-items: center; gap: 1rem; }
+    .nav-links { margin-left: auto; display: flex; gap: 1.2rem; align-items: center; font-size: .9rem; }
+    .nav-links a:not(.btn) { color: var(--fg); text-decoration: none; }
+    @media (max-width: 640px) { .nav-links a:not(.btn) { display: none; } }
+
+    .hero { position: relative; min-height: min(100svh, 860px); overflow: hidden; display: flex; align-items: center;
+      background: radial-gradient(60% 60% at 75% 45%, rgba(217, 164, 65, .22), transparent 70%),
+                  radial-gradient(50% 50% at 90% 80%, rgba(122, 132, 80, .18), transparent 70%), var(--bg); }
+    #hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .hero-copy { position: relative; z-index: 2; max-width: 1240px; width: 100%; margin: 0 auto; padding-inline: 20px; padding-block: 7rem 4rem; pointer-events: none; }
+    .hero-copy > * { pointer-events: auto; max-width: 580px; }
+    .eyebrow { display: inline-flex; gap: .5rem; align-items: center; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); background: rgba(255, 253, 248, .75); border: 1px solid var(--border); padding: .3rem .7rem; border-radius: 999px; }
+    h1 { font-family: var(--display); font-weight: 600; font-size: clamp(2.5rem, 6vw, 4.6rem); line-height: 1.02; letter-spacing: -.03em; margin: 1.1rem 0 1rem; }
+    h1 em { font-style: italic; color: var(--primary); }
+    .lede { font-size: clamp(1rem, 1.6vw, 1.18rem); color: var(--muted-fg); margin: 0 0 1.8rem; }
+    .cta-row { display: flex; gap: .7rem; flex-wrap: wrap; }
+    .btn-lg { padding: .8rem 1.3rem; font-size: 1rem; border-radius: 10px; }
+    .hero-apps { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: 2rem; font-size: .8rem; color: var(--muted-fg); align-items: center; }
+    .hero-apps .chip { background: rgba(255, 253, 248, .8); }
+    @media (max-width: 860px) { .hero-copy { padding-block: 6rem 3rem; } #hero-canvas { opacity: .55; } }
+
+    section.band { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 5rem; }
+    .kicker { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--primary); margin: 0 0 .6rem; }
+    h2.big { font-family: var(--display); font-weight: 600; font-size: clamp(1.8rem, 3.6vw, 2.8rem); line-height: 1.08; letter-spacing: -.02em; margin: 0 0 1rem; max-width: 760px; }
+    .band-lede { color: var(--muted-fg); max-width: 640px; margin: 0 0 2.5rem; font-size: 1.05rem; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    @media (max-width: 900px) { .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+    .step-card { padding: 1.4rem; }
+    .step-card .n { font-family: var(--display); font-size: 2.2rem; color: var(--primary); line-height: 1; }
+    .step-card h3, .feature h3 { margin: .6rem 0 .35rem; font-size: 1.05rem; }
+    .step-card p, .feature p { margin: 0; color: var(--muted-fg); font-size: .92rem; }
+
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; position: relative; }
+    @media (max-width: 900px) { .flow { grid-template-columns: 1fr 1fr; gap: 1rem; } }
+    @media (max-width: 560px) { .flow { grid-template-columns: 1fr; } }
+    .flow-node { position: relative; padding: 1.2rem; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-right: 1.4rem; }
+    .flow-node:last-child { margin-right: 0; }
+    .flow-node:not(:last-child)::after { content: "→"; position: absolute; right: -1.15rem; top: 50%; transform: translateY(-50%); color: var(--primary); font-weight: 700; }
+    @media (max-width: 900px) { .flow-node { margin-right: 0; } .flow-node::after { display: none; } }
+    .flow-node .app { font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+    .flow-node .app i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .flow-node p { margin: .4rem 0 0; font-size: .88rem; color: var(--muted-fg); }
+    .loop { margin-top: 1rem; padding: 1rem 1.2rem; border: 1px dashed var(--primary); border-radius: var(--radius); background: rgba(194, 98, 45, .05); font-size: .93rem; }
+    .loop strong { color: var(--primary); }
+
+    .proof { background: var(--fg); color: var(--bg); }
+    .proof .band-lede, .proof .feature p { color: #D8C9B6; }
+    .proof .kicker { color: var(--amber); }
+    .stat { border: 1px solid rgba(251, 243, 231, .15); border-radius: var(--radius); padding: 1.4rem; }
+    .stat-value { font-family: var(--display); font-size: clamp(2.2rem, 4vw, 3rem); line-height: 1; }
+    .stat-label { color: #D8C9B6; font-size: .88rem; margin-top: .4rem; }
+    .feature { border-top: 1px solid rgba(251, 243, 231, .15); padding-top: 1.1rem; }
+    .proof .feature h3 { color: var(--bg); }
+
+    .wont { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .8rem 2rem; }
+    @media (max-width: 700px) { .wont { grid-template-columns: 1fr; } }
+    .wont li { display: flex; gap: .7rem; font-size: .98rem; }
+    .wont li::before { content: "✕"; color: var(--primary); font-weight: 700; }
+
+    .final { text-align: center; }
+    .final h2.big { margin-inline: auto; }
+    footer { border-top: 1px solid var(--border); padding-block: 1.5rem; padding-inline: 20px; text-align: center; color: var(--muted-fg); font-size: .82rem; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>Honest Apply</a>
+      <nav class="nav-links" aria-label="Main">
+        <a href="#how">How it works</a>
+        <a href="#apps">Apps</a>
+        <a href="#proof">Proof</a>
+        <a class="btn btn-sm" href="/app">Launch agent</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <canvas id="hero-canvas" aria-hidden="true"></canvas>
+      <div class="hero-copy">
+        <span class="eyebrow">3 agents · 4 apps · 0 made-up claims</span>
+        <h1>The job agent that <em>won't lie</em> for you.</h1>
+        <p class="lede">Paste a job. Three agents read it, tailor your real experience to it, and prove every line before anything touches Gmail, Calendar, your CRM or Slack.</p>
+        <div class="cta-row">
+          <a class="btn btn-lg" href="/app">Launch the agent →</a>
+          <a class="btn btn-ghost btn-lg" href="#proof">See the proof</a>
+        </div>
+        <div class="hero-apps" aria-label="Apps it acts in">
+          Works across <span class="chip">Gmail</span><span class="chip">Google Calendar</span><span class="chip">HubSpot CRM</span><span class="chip">Slack</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="how">
+      <p class="kicker">How it works</p>
+      <h2 class="big">One agent, three minds, hard gates in between.</h2>
+      <p class="band-lede">Each agent has one job. The rules that decide whether anything gets sent live in code, not in a prompt the model could talk its way around.</p>
+      <div class="grid-3">
+        <div class="card step-card"><div class="n">01</div><h3>Researcher</h3><p>Turns a messy job post into structured requirements: skills, seniority, must-haves and keywords.</p></div>
+        <div class="card step-card"><div class="n">02</div><h3>Tailor</h3><p>Rewrites your resume and cover note using only lines you already have, and cites the source line for every one.</p></div>
+        <div class="card step-card"><div class="n">03</div><h3>Executor</h3><p>Checks every receipt in code, then uses tool calling to pick which apps to act in. It can do less, never skip a gate.</p></div>
+      </div>
+    </section>
+
+    <section class="band" id="apps" style="padding-top:0">
+      <p class="kicker">Apps that work together</p>
+      <h2 class="big">Not four integrations. One hand-off.</h2>
+      <p class="band-lede">Each app passes what it made to the next, so you end up with one connected application, not four scattered side effects.</p>
+      <div class="flow">
+        <div class="flow-node"><div class="app"><i style="background:#C2622D"></i>Gmail</div><p>Drafts the email with your tailored resume attached. Sends only when you allow it.</p></div>
+        <div class="flow-node"><div class="app"><i style="background:#D9A441"></i>Calendar</div><p>Books a follow-up in 7 days, with a link straight to that email.</p></div>
+        <div class="flow-node"><div class="app"><i style="background:#7A8450"></i>HubSpot CRM</div><p>Creates a deal linked to the employer and the candidate, carrying both links. The pipeline lives where teams already work.</p></div>
+        <div class="flow-node"><div class="app"><i style="background:#3A2E27"></i>Slack</div><p>One message with all three links, or why it stopped and what you're missing.</p></div>
+      </div>
+      <div class="loop"><strong>And when they reply:</strong> Gmail spots it, the CRM deal moves to Replied, the follow-up reminder cancels itself, and Slack pings you with the link.</div>
+    </section>
+
+    <section class="band" id="teams" style="padding-top:0">
+      <p class="kicker">Built for one, ready for a team</p>
+      <h2 class="big">The same agent, wherever placements happen.</h2>
+      <p class="band-lede">Deals land in the CRM and updates land in Slack, so the people who help candidates see every application without asking.</p>
+      <div class="grid-3">
+        <div class="card step-card"><h3>Job seekers</h3><p>Tailored, honest applications at volume, with a follow-up already on the calendar.</p></div>
+        <div class="card step-card"><h3>Career centers</h3><p>Coaches see each student's pipeline in HubSpot and get flagged gaps in Slack before they become rejections.</p></div>
+        <div class="card step-card"><h3>Staffing agencies</h3><p>Recruiters submit candidates faster, and nothing leaves the building with a claim the resume can't back.</p></div>
+      </div>
+    </section>
+
+    <section class="proof">
+      <div class="band" id="proof">
+        <p class="kicker">Show how you know it works</p>
+        <h2 class="big">We break it on purpose.</h2>
+        <p class="band-lede">Ten job descriptions, including a poor fit and one built to bait fabrication, scored on four checks. Then again with Gmail down and the model rate-limited.</p>
+        <div class="grid-3" style="margin-bottom:3rem">
+          <div class="stat"><div class="stat-value" id="stat-normal">—</div><div class="stat-label">test jobs passed, normal run</div></div>
+          <div class="stat"><div class="stat-value" id="stat-faults">—</div><div class="stat-label">passed with Gmail down + LLM 429</div></div>
+          <div class="stat"><div class="stat-value" id="stat-runs">—</div><div class="stat-label">agent runs logged</div></div>
+        </div>
+        <div class="grid-4">
+          <div class="feature"><h3>Receipts</h3><p>Every tailored line links to the line of your resume it came from. No source, no send.</p></div>
+          <div class="feature"><h3>Hard gates</h3><p>Low overlap, an unbacked claim or a repeat application stops the Executor before any app is touched.</p></div>
+          <div class="feature"><h3>Chaos panel</h3><p>Switch off Gmail, HubSpot, Slack or the model mid-demo. Retries, fallbacks and clear errors, no crashes.</p></div>
+          <div class="feature"><h3>One-click undo</h3><p>Deletes the draft and the reminder, closes the CRM deal, and tells Slack. Across every app at once.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <p class="kicker">What it won't do</p>
+      <h2 class="big">Boundaries, stated plainly.</h2>
+      <ul class="wont" style="margin-top:1.5rem">
+        <li>Invent a skill, employer, number or title you don't have.</li>
+        <li>Send anything without your Google account, your switch and a clean check.</li>
+        <li>Apply to the same role twice.</li>
+        <li>Fail silently. Every outcome reaches you in Slack.</li>
+      </ul>
+    </section>
+
+    <section class="band final" style="padding-top:1rem">
+      <h2 class="big">Apply to more jobs without lowering the bar.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:1.5rem"><a class="btn btn-lg" href="/app">Launch the agent →</a></div>
+    </section>
+  </main>
+
+  <footer>Built for the Multi-App AI Agent Hackathon · September 2026</footer>
+
+  <script>
+    // Live proof numbers from the eval runner and run log.
+    fetch('/api/eval/summary').then((r) => r.json()).then((s) => {
+      if (s.normal) document.getElementById('stat-normal').textContent = `${s.normal.passed}/${s.normal.total}`;
+      if (s.faults) document.getElementById('stat-faults').textContent = `${s.faults.passed}/${s.faults.total}`;
+    }).catch(() => {});
+    fetch('/api/history').then((r) => r.json()).then((rows) => {
+      document.getElementById('stat-runs').textContent = rows.length;
+    }).catch(() => {});
+  </script>
+
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    // Procedural hero: three agents orbit a core; four app nodes sit on a ring,
+    // and pulses travel Executor → Gmail → Calendar → CRM → Slack → back.
+    import * as THREE from 'three';
+
+    const canvas = document.getElementById('hero-canvas');
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function start() {
+      let renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      } catch {
+        canvas.remove(); // CSS gradient behind stays as the fallback
+        return;
+      }
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+      camera.position.set(0, 2.2, 13);
+
+      scene.add(new THREE.HemisphereLight(0xfff4e6, 0xc2622d, 1.2));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+      keyLight.position.set(5, 8, 6);
+      scene.add(keyLight);
+
+      const world = new THREE.Group();
+      world.rotation.x = 0.42;
+      scene.add(world);
+
+      // core + three agents
+      const core = new THREE.Mesh(
+        new THREE.SphereGeometry(0.42, 32, 32),
+        new THREE.MeshStandardMaterial({ color: 0xfffdf8, emissive: 0xd9a441, emissiveIntensity: 0.35, roughness: 0.3 }),
+      );
+      world.add(core);
+
+      const agentPivot = new THREE.Group();
+      world.add(agentPivot);
+      const agents = [0xc2622d, 0xd9a441, 0x7a8450].map((color, i) => {
+        const mesh = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.46, 0),
+          new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.08, flatShading: true }),
+        );
+        const a = (i / 3) * Math.PI * 2;
+        mesh.position.set(Math.cos(a) * 1.35, Math.sin(a * 2) * 0.25, Math.sin(a) * 1.35);
+        agentPivot.add(mesh);
+        return mesh;
+      });
+
+      // app ring
+      const RING = 3.9;
+      const ringPoints = Array.from({ length: 129 }, (_, i) => {
+        const a = (i / 128) * Math.PI * 2;
+        return new THREE.Vector3(Math.cos(a) * RING, 0, Math.sin(a) * RING);
+      });
+      world.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(ringPoints),
+        new THREE.LineBasicMaterial({ color: 0x3a2e27, transparent: true, opacity: 0.18 }),
+      ));
+
+      const appColors = [0xc2622d, 0xd9a441, 0x7a8450, 0x3a2e27]; // Gmail, Calendar, CRM, Slack
+      const apps = appColors.map((color, i) => {
+        const node = new THREE.Group();
+        const a = (i / 4) * Math.PI * 2;
+        node.position.set(Math.cos(a) * RING, 0, Math.sin(a) * RING);
+        const geo = new THREE.OctahedronGeometry(0.34, 0);
+        node.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xfffdf8, roughness: 0.5 })));
+        node.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color })));
+        world.add(node);
+        return node;
+      });
+
+      // spoke from the core (Executor) to Gmail
+      world.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), apps[0].position.clone()]),
+        new THREE.LineBasicMaterial({ color: 0xc2622d, transparent: true, opacity: 0.35 }),
+      ));
+
+      // pulses
+      const pulseGeo = new THREE.SphereGeometry(0.075, 12, 12);
+      const ringPulses = Array.from({ length: 6 }, (_, i) => {
+        const m = new THREE.Mesh(pulseGeo, new THREE.MeshBasicMaterial({ color: i % 2 ? 0xd9a441 : 0xc2622d }));
+        m.userData.offset = i / 6;
+        world.add(m);
+        return m;
+      });
+      const spokePulse = new THREE.Mesh(pulseGeo, new THREE.MeshBasicMaterial({ color: 0xc2622d }));
+      world.add(spokePulse);
+
+      // warm dust
+      const dustCount = 700;
+      const dust = new Float32Array(dustCount * 3);
+      for (let i = 0; i < dustCount; i++) {
+        const r = 6 + Math.random() * 10, t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+        dust.set([r * Math.sin(p) * Math.cos(t), r * Math.cos(p) * 0.6, r * Math.sin(p) * Math.sin(t)], i * 3);
+      }
+      const dustGeo = new THREE.BufferGeometry();
+      dustGeo.setAttribute('position', new THREE.BufferAttribute(dust, 3));
+      const dustPoints = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xc2622d, size: 0.035, transparent: true, opacity: 0.45 }));
+      scene.add(dustPoints);
+
+      // layout + resize
+      function resize() {
+        const { clientWidth: w, clientHeight: hgt } = canvas.parentElement;
+        renderer.setSize(w, hgt, false);
+        camera.aspect = w / hgt;
+        camera.updateProjectionMatrix();
+        const wide = camera.aspect > 1.15;
+        world.position.set(wide ? 3.4 : 0, wide ? 0 : -1.2, 0);
+        world.scale.setScalar(wide ? 1 : 0.8);
+      }
+      new ResizeObserver(resize).observe(canvas.parentElement);
+      resize();
+
+      const pointer = { x: 0, y: 0 };
+      addEventListener('pointermove', (e) => {
+        pointer.x = e.clientX / innerWidth - 0.5;
+        pointer.y = e.clientY / innerHeight - 0.5;
+      }, { passive: true });
+
+      const clock = new THREE.Clock();
+      let visible = true;
+      new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; }).observe(canvas);
+
+      function frame() {
+        const t = clock.getElapsedTime();
+        world.rotation.y = t * 0.12;
+        agentPivot.rotation.y = t * 0.6;
+        agents.forEach((m, i) => { m.rotation.x = t * (0.5 + i * 0.2); m.rotation.y = t * 0.7; });
+        apps.forEach((n, i) => { n.rotation.y = t * 0.9; n.position.y = Math.sin(t * 1.4 + i) * 0.12; });
+        core.scale.setScalar(1 + Math.sin(t * 2.2) * 0.05);
+
+        ringPulses.forEach((m) => {
+          const a = ((t * 0.16 + m.userData.offset) % 1) * Math.PI * 2;
+          m.position.set(Math.cos(a) * RING, 0, Math.sin(a) * RING);
+        });
+        spokePulse.position.copy(apps[0].position).multiplyScalar((t * 0.5) % 1);
+
+        dustPoints.rotation.y = -t * 0.02;
+        camera.position.x += (pointer.x * 1.6 - camera.position.x) * 0.04;
+        camera.position.y += (2.2 - pointer.y * 1.0 - camera.position.y) * 0.04;
+        camera.lookAt(world.position.x * 0.5, 0, 0);
+        renderer.render(scene, camera);
+      }
+
+      if (reduceMotion) {
+        frame();
+        return;
+      }
+      renderer.setAnimationLoop(() => { if (visible) frame(); });
+    }
+
+    start();
+  </script>
+</body>
+</html>

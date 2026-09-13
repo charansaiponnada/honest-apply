@@ -1,0 +1,18 @@
+Platform Engineer — Cloud Infrastructure
+
+Own our infrastructure-as-code and multi-region GCP footprint. You will write
+Terraform modules, run production Kubernetes clusters with Helm and ArgoCD,
+and build internal tooling in Go.
+
+Required:
+- 3+ years running production infrastructure
+- Terraform
+- Google Cloud Platform (GCP)
+- Go
+- Certified Kubernetes Administrator (CKA)
+
+Must have:
+- On-call experience for customer-facing systems
+- Prometheus and Grafana
+
+Mid-level role. Please list your certifications and years with each tool.

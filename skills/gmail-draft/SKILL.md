@@ -1,66 +1,36 @@
 ---
 name: gmail-draft
 description: >
-  Creates a Gmail draft (and optionally sends it if the guardrail
-  score clears a second, stricter threshold). Attaches the tailored
-  resume as a PDF-like text body. Never auto-sends in MVP unless both
-  thresholds are cleared.
+  Creates the application email in Gmail (cover note body, tailored resume
+  attached) as a draft. Sends it only when a Google account is connected, the
+  user enabled sending, a recipient is set, and every gate passed. Undo deletes
+  the draft.
 ---
 
 # Gmail Draft Skill
 
-Composes a job application email and saves it as a Gmail draft.
-The draft can be auto-sent if the guardrail score clears
-`AUTO_SEND_THRESHOLD` (default 70%) — otherwise left for human review.
-
-## When to use
-
-Only when the guardrail check passes (`needs_review == False`).
-
 ## Function
 
 ```python
-from agent.gmail_action import create_draft
+from agent.gmail_action import create_draft, undo_draft
 
-result = create_draft(
-    company="Acme Corp",
-    role="Backend Engineer",
-    cover_note="...",
-    tailored_resume="...",
-    auto_send=False,
-)
-# result: {"status": "ok"|"error"|"mocked", "detail": str, "live": bool, "sent": bool}
+result = create_draft(company, role, cover_note, tailored_resume, to_addr="", auto_send=False)
+# {"status": "ok"|"error"|"mocked", "detail", "live", "sent", "ref", "link"}
+undo_draft(result["ref"])
 ```
 
-### Input
+## When it sends
 
-| Arg | Type | Default | Description |
-|-----|------|---------|-------------|
-| `company` | `str` | required | Target company name |
-| `role` | `str` | required | Target role title |
-| `cover_note` | `str` | required | Body text of the email |
-| `tailored_resume` | `str` | required | Resume content (attached/body) |
-| `auto_send` | `bool` | `False` | Send immediately vs leave as draft |
+`pipeline.py` passes `auto_send=True` only if **all** hold: Google credentials live, the user
+turned on *Allow sending*, `to_addr` is set, overlap ≥ `AUTO_SEND_THRESHOLD`, receipts check
+faithful, Executor recommends proceed. `drafts.send` is not retried (not idempotent). Mock mode
+never reports `sent: true`.
 
-### Output
+## Chaining
 
-```json
-{
-  "status": "ok",
-  "detail": "Draft created for Backend Engineer @ Acme Corp",
-  "live": true,
-  "sent": false
-}
-```
+`link` (the draft or sent message in Gmail) is passed to the Calendar event, the CRM deal and
+Slack. `ref` is stored in the run log for undo. A sent email can't be recalled; undo says so.
 
-- `status`: `"ok"` = success, `"error"` = failed, `"mocked"` = offline fallback
-- `sent`: `True` only when `auto_send=True` AND the email was actually sent
+## Scopes
 
-## Error handling
-
-Google API failures (auth expired, quota) return `"error"` status.
-Stale OAuth token triggers automatic re-auth on next run.
-
-## Scopes required
-
-`https://www.googleapis.com/auth/gmail.compose`
+`gmail.compose` (drafts + send). The reply tracker additionally uses `gmail.readonly`.

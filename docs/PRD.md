@@ -3,6 +3,14 @@
 **Author:** Charan Sai Ponnada
 **Event:** Multi-App AI Agent Hackathon (Sept 13, 2026, Arga Labs)
 
+> **Build-day changes (Sept 13):** Streamlit replaced by FastAPI + a three.js landing page and a
+> vanilla JS app (one service, one URL). Apps the agent acts in are now Gmail, Google Calendar,
+> **HubSpot CRM** (replaces Sheets, so teams get a real pipeline) and Slack; Drive dropped. Still
+> exactly 3 agents. Added: receipts (source-line citations verified in code), seniority and
+> duplicate gates, LLM tool calling in the Executor, app chaining, a reply tracker, a chaos panel,
+> one-click undo and a 10-job, 4-check eval. Gmail sends only when a Google account is connected,
+> the user opts in, and every gate passes. The sections below are the original pre-event plan.
+
 ---
 
 ## 1. Problem Statement

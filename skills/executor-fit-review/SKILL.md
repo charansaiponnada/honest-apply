@@ -1,49 +1,59 @@
 ---
 name: executor-fit-review
-description: Agent 3 in the pipeline — an LLM second-opinion fit review that gates dispatch to external apps (Gmail/Sheets/Calendar/Drive) alongside the rule-based guardrail. Use when deciding whether a tailored application should proceed or be flagged for human review.
+description: Agent 3 — reviews the tailored application (receipts check in code + LLM fit review), then uses LLM tool calling to choose which apps (Gmail, Calendar, HubSpot CRM) to act in once every hard gate has passed. Use when deciding whether an application may be dispatched and where.
 ---
 
-# Executor — independent fit review (Agent 3)
+# Executor — review, then act (Agent 3)
 
-Third and final agent. The Researcher extracted the JD's requirements, the
-Tailor rewrote the resume against them; the Executor reviews the match
-quality itself before the application is dispatched to external apps.
-
-## Function
+## Step 1: review
 
 ```python
-from agent.executor import execute_review
+from agent.executor import execute_review, check_receipts
 
-verdict, used_live_llm = execute_review(resume_text, requirements, guardrail)
+verdict, used_live_llm = execute_review(original_resume, tailoring, requirements, guardrail, company, role)
 ```
 
-- `resume_text: str` — candidate's tailored resume
-- `requirements: dict` — output of `extract_requirements` (Agent 1)
-- `guardrail: dict` — output of `score_overlap` (the rule-based gate)
-
-Returns `(verdict, used_live_llm)` where
+- `tailoring` is the Tailor's output: `tailored_resume`, `cover_note`, `evidence` (`[{tailored, source_line}]`).
+- **Receipts check (authoritative, code):** each tailored line must match its cited source line
+  (difflib ≥ 0.3, falling back to the closest original line), and every named thing in it
+  (numbers, mixed-case tech names, mid-sentence capitalized words) must appear in the original
+  resume. The cover note gets the same token check; company and role words are allowed.
+- **Fit review (advisory, LLM):** `proceed | review`, confidence, one-sentence reason, plus any
+  unsupported claims the model notices (`llm_flags`, shown but not gating).
 
 ```json
 {
-  "recommendation": "proceed" | "review",
-  "confidence": 0.0,
-  "reason": "one short sentence"
+  "recommendation": "proceed",
+  "confidence": 0.72,
+  "reason": "Covers Python, FastAPI and PostgreSQL requirements.",
+  "faithful": true,
+  "unsupported_claims": [],
+  "receipts": [{"tailored": "...", "source_line": 11, "supported": true, "reason": ""}],
+  "llm_flags": []
 }
 ```
 
-## Semantics
+`faithful: false` blocks every app action and forces `recommendation: "review"`.
 
-- **Advisory, not authoritative.** The rule-based guardrail (`score_overlap`,
-  thresholds 0.40 / 0.70) remains the hard reliability gate that short-circuits
-  Gmail/Sheets/Calendar/Drive. The Executor's verdict is surfaced in the UI and
-  eval log as a human-readable second opinion.
-- `recommendation: "review"` with the rule gate also flagging the run means the
-  candidate is never dispatched anywhere (only Slack is notified).
-- On LLM failure (rate limit, model pulled, network), the mock fallback mirrors
-  the rule gate's outcome so offline demos behave identically to live ones.
+## Step 2: act
 
-## System prompt
+```python
+from agent.executor import choose_tools
+tool_names, chosen_by_llm = choose_tools(requirements, guardrail, verdict, company, role)
+```
 
-Each agent holds a distinct persona; the Executor's prompt (`agent/llm.py`
-`_AGENT_SYSTEM_PROMPTS["executor"]`) frames it as the final quality gate and
-strictly limits output to the JSON shape above.
+Only called after `pipeline.py` has cleared every hard gate (overlap, receipts, seniority,
+duplicate). The model is offered `create_gmail_draft`, `schedule_followup`, `log_crm_deal` and
+may call fewer — it can never reach a tool the gates didn't allow.
+
+Tool selection is a multi-turn loop (`agent/llm.py` `call_tools`): the first turn requires a tool
+call, each chosen tool is acknowledged as queued, and the model is asked again until it stops.
+Structured `tool_calls` are used when the provider returns them; when a free provider returns the
+call as JSON text instead, the tool names are read from the text, accepting only offered tools. Slack is not offered: the
+pipeline always notifies Slack itself. No tool calls (mock mode, model without tool support,
+rate limit) → deterministic dispatch of all three, and the run log records `executor_mode`.
+
+## Self-check
+
+`python -m agent.executor` — asserts an honest rewrite passes and an injected fabricated bullet
+("Led a Terraform migration at Google, cutting costs 40%") and a padded cover note are caught.

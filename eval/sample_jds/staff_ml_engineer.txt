@@ -1,0 +1,13 @@
+Staff Machine Learning Engineer — LLM Platform
+
+Lead the technical direction of our LLM training and serving platform. You'll
+set architecture for fine-tuning pipelines in PyTorch, own evaluation
+infrastructure, and mentor a team of eight engineers.
+
+Required:
+- 8+ years of software engineering, 4+ in machine learning
+- Deep PyTorch expertise and experience fine-tuning large language models
+- Python, Docker, AWS
+- Track record of leading cross-team technical initiatives
+
+Senior staff-level role. Lead engineer for the platform org.

@@ -8,6 +8,10 @@ keep failing (free-tier rate limit, a model getting pulled from the free
 tier, network hiccup, etc.), this falls back to a deterministic, rule-based
 "mock LLM" so the rest of the pipeline still runs end-to-end.
 
+Two entry points:
+  call_json  — strict JSON answer (Researcher, Tailor, Executor review)
+  call_tools — function calling (Executor choosing which apps to act in)
+
 Free-tier models rotate on OpenRouter as providers retire them. If
 _DEFAULT_MODEL stops working, check
 https://openrouter.ai/models?max_price=0 and set OPENROUTER_MODEL to a new
@@ -21,14 +25,14 @@ import time
 
 import requests
 
+from agent.utils import FAULTS
+
 _API_URL = "https://openrouter.ai/api/v1/chat/completions"
 _DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 _TIMEOUT_SECONDS = 90
 _MAX_RETRIES = 3
 
-# Each named agent gets its own system prompt so the LLM holds a distinct
-# persona per stage. "executor" is the orchestrator stage: it receives the
-# artifacts from the first two agents and decides/acts on them.
+# One persona per agent in the 3-agent team.
 _AGENT_SYSTEM_PROMPTS = {
     "researcher": (
         "You are the Researcher agent of an AI job-application team. Your only job "
@@ -39,17 +43,20 @@ _AGENT_SYSTEM_PROMPTS = {
         "You are the Tailor agent of an AI job-application team. You rewrite a "
         "candidate's resume and write a cover note against a requirements profile. "
         "HARD RULE: never invent or add experience, skills, employers, or metrics "
-        "that are not already in the original resume."
+        "that are not already in the original resume, and cite the original line "
+        "every tailored line came from."
     ),
     "executor": (
-        "You are the Executor agent of an AI job-application team. You receive a "
-        "candidate's tailored application and decide whether it should proceed to "
-        "external apps (Gmail/Sheets/Calendar/Drive) or be flagged for human review, "
-        "based on how well the resume actually covers the job's requirements."
+        "You are the Executor agent of an AI job-application team. First you review "
+        "the tailored application: does it cover the job's requirements, and is every "
+        "claim backed by the original resume? Then you decide which external app tools "
+        "(Gmail, Google Calendar, HubSpot CRM, Slack) to use for it."
     ),
 }
 
 _ALWAYS_JSON = ". You return ONLY valid JSON. No markdown fences, no commentary, no preamble."
+_TEXT_TOOL_NAME = re.compile(r'"name"\s*:\s*"([A-Za-z0-9_]+)"')
+_QUEUED = json.dumps({"status": "queued", "note": "runs after planning; call any other tools that apply, or stop"})
 
 
 def _model_name() -> str:
@@ -66,63 +73,117 @@ def is_live() -> bool:
     return bool(key) and key != "your_openrouter_api_key_here"
 
 
+def _chat(agent: str, messages: list[dict], system_suffix: str = "", **extra) -> dict:
+    """One chat completion, retrying 429s with exponential backoff. Returns the
+    assistant message dict; raises on any other failure."""
+    system = _AGENT_SYSTEM_PROMPTS.get(agent, _AGENT_SYSTEM_PROMPTS["researcher"]) + system_suffix
+    headers = {
+        "Authorization": f"Bearer {_api_key()}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/ai-job-application-agent",
+        "X-Title": "AI Job Application Agent",
+    }
+    body = {
+        "model": _model_name(),
+        "messages": [{"role": "system", "content": system}, *messages],
+        "temperature": 0.3,
+        **extra,
+    }
+    for attempt in range(_MAX_RETRIES):
+        resp = requests.post(_API_URL, headers=headers, json=body, timeout=_TIMEOUT_SECONDS)
+        if resp.status_code == 429 and attempt < _MAX_RETRIES - 1:
+            delay = 2.0 * (2 ** attempt)
+            print(f"[llm] 429 rate-limited, retry {attempt+1}/{_MAX_RETRIES} in {delay:.0f}s...")
+            time.sleep(delay)
+            continue
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]
+    raise RuntimeError("unreachable")  # pragma: no cover - last attempt raises above
+
+
+def _fault_active() -> bool:
+    if "llm_429" in FAULTS:
+        print("[llm] injected fault: 429 rate limit, retries exhausted — falling back to rule-based mock")
+        return True
+    return False
+
+
 def call_json(prompt: str, mock_fn, agent: str = "researcher") -> tuple[dict, bool]:
     """
-    Call OpenRouter asking for a strict JSON response. Falls back to
-    mock_fn() (a zero-arg callable returning a dict) if no key is
-    configured or all retries + the call/parse fail for any reason.
-
-    `agent` selects the system prompt (researcher | tailor | executor) so
-    each pipeline stage runs as a distinct named agent.
-
-    Retries up to 3 times on 429 (free-tier rate limit) with exponential
-    backoff, since free models are heavily rate-limited on OpenRouter.
+    Ask for a strict JSON response. Falls back to mock_fn() (a zero-arg
+    callable returning a dict) if no key is configured, the chaos panel has
+    the LLM rate-limited, or the call/parse fails for any reason.
 
     Returns (result_dict, used_live_llm: bool).
     """
-    if not is_live():
+    if _fault_active() or not is_live():
+        return mock_fn(), False
+    try:
+        message = _chat(agent, [{"role": "user", "content": prompt}], system_suffix=_ALWAYS_JSON,
+                        response_format={"type": "json_object"})
+        text = (message.get("content") or "").strip()
+        text = re.sub(r"^```json|```$", "", text, flags=re.MULTILINE).strip()
+        return json.loads(text), True
+    except Exception as exc:  # noqa: BLE001 - demo-safe fallback
+        print(f"[llm] Live OpenRouter call failed, falling back to mock: {exc}")
         return mock_fn(), False
 
-    system = _AGENT_SYSTEM_PROMPTS.get(agent, _AGENT_SYSTEM_PROMPTS["researcher"]) + _ALWAYS_JSON
 
-    last_exc: Exception | None = None
-    for attempt in range(_MAX_RETRIES):
+def call_tools(prompt: str, tools: list[dict], agent: str = "executor") -> tuple[list[dict], bool]:
+    """
+    Function-calling request. Returns ([{"name": str, "args": dict}], used_live_llm).
+    An empty list with used_live_llm=False means "no live decision" — the
+    caller falls back to its deterministic plan.
+    """
+    if _fault_active() or not is_live():
+        return [], False
+
+    # Many models emit one tool call per turn, so keep the conversation going: acknowledge each call
+    # (the pipeline runs the tools after planning) and ask again until the model stops choosing.
+    messages = [{"role": "user", "content": prompt}]
+    calls: list[dict] = []
+    for turn in range(len(tools) + 1):
         try:
-            headers = {
-                "Authorization": f"Bearer {_api_key()}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/ai-job-application-agent",
-                "X-Title": "AI Job Application Agent",
-            }
-            body = {
-                "model": _model_name(),
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
-                ],
-                "response_format": {"type": "json_object"},
-                "temperature": 0.3,
-            }
-            resp = requests.post(_API_URL, headers=headers, json=body, timeout=_TIMEOUT_SECONDS)
-            resp.raise_for_status()
-            data = resp.json()
-            text = data["choices"][0]["message"]["content"].strip()
-            text = re.sub(r"^```json|```$", "", text, flags=re.MULTILINE).strip()
-            return json.loads(text), True
-        except requests.exceptions.HTTPError as exc:
-            last_exc = exc
-            status = getattr(exc.response, "status_code", None) if hasattr(exc, "response") else None
-            if status == 429 and attempt < _MAX_RETRIES - 1:
-                delay = 2.0 * (2 ** attempt)
-                print(f"[llm] 429 rate-limited, retry {attempt+1}/{_MAX_RETRIES} in {delay:.0f}s...")
-                time.sleep(delay)
-                continue
-            print(f"[llm] Live OpenRouter call failed, falling back to mock: {exc}")
-            return mock_fn(), False
-        except Exception as exc:
-            last_exc = exc
-            print(f"[llm] Live OpenRouter call failed, falling back to mock: {exc}")
-            return mock_fn(), False
+            # First turn must pick a tool (the gates already decided to act); later turns may stop.
+            message = _chat(agent, messages, tools=tools, tool_choice="required" if turn == 0 else "auto")
+        except Exception as exc:  # noqa: BLE001 - demo-safe fallback
+            print(f"[llm] Tool-calling request failed on turn {turn + 1}: {exc}")
+            return (calls, True) if calls else ([], False)
 
-    print(f"[llm] All {_MAX_RETRIES} retries exhausted, falling back to mock: {last_exc}")
-    return mock_fn(), False
+        chosen = {c["name"] for c in calls}
+        tool_calls = message.get("tool_calls") or []
+        if tool_calls:
+            if all((tc.get("function") or {}).get("name") in chosen for tc in tool_calls):
+                break
+            messages.append({"role": "assistant", "content": message.get("content") or "", "tool_calls": tool_calls})
+            for tool_call in tool_calls:
+                fn = tool_call.get("function") or {}
+                try:
+                    args = json.loads(fn.get("arguments") or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+                if fn.get("name") not in chosen:
+                    calls.append({"name": fn.get("name", ""), "args": args})
+                    chosen.add(fn.get("name"))
+                messages.append({"role": "tool", "tool_call_id": tool_call.get("id", ""), "content": _QUEUED})
+            continue
+
+        # Some free providers return the model's tool call as JSON text in `content` instead of
+        # `tool_calls`. Read the names back, accepting only tools that were actually offered.
+        # ponytail: names only (our tools take no arguments); parse arguments too if a tool ever needs them
+        offered = {t["function"]["name"] for t in tools}
+        text = message.get("content") or ""
+        new = [n for n in dict.fromkeys(_TEXT_TOOL_NAME.findall(text)) if n in offered and n not in chosen]
+        if not new:
+            break
+        calls.extend({"name": n, "args": {}} for n in new)
+        messages.append({"role": "assistant", "content": text})
+        messages.append({"role": "user", "content": f"Queued: {', '.join(new)}. Call any other tools that apply, or reply DONE."})
+    return calls, True
+
+
+if __name__ == "__main__":
+    observed = '[[\n\n{\n  "name": "create_gmail_draft",\n  "parameters": {}\n}\n]'  # real reply from a free provider
+    assert _TEXT_TOOL_NAME.findall(observed) == ["create_gmail_draft"]
+    assert _TEXT_TOOL_NAME.findall('DONE') == []
+    print("llm text tool-call parser self-check passed")

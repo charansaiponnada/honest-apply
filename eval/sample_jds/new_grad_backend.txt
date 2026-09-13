@@ -1,0 +1,18 @@
+New Grad Software Engineer — Backend (Python)
+
+Join our API team straight out of school. You'll build FastAPI services backed
+by PostgreSQL, containerize them with Docker, and deploy to AWS.
+
+Required:
+- B.S. in Computer Science (2026 or 2027 graduates)
+- Python
+- FastAPI or Flask
+- PostgreSQL
+- Docker
+
+Nice to have:
+- AWS (EC2, S3)
+- CI/CD with GitHub Actions
+- Unit and integration testing
+
+Entry level, new grad program with mentorship.

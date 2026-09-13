@@ -2,42 +2,30 @@
 name: guardrail
 description: >
   Scores keyword overlap between the candidate's resume and the extracted
-  JD requirements. Below GUARDRAIL_THRESHOLD (40%) → flags for review
-  and skips all app actions. Above AUTO_SEND_THRESHOLD (70%) → eligible
-  for automatic email send. Two independent gates, not one.
+  job requirements. Below GUARDRAIL_THRESHOLD (40%) the run is flagged and no
+  app acts; at/above AUTO_SEND_THRESHOLD (70%) the application is eligible
+  to be sent — one of several conditions, never enough on its own.
 ---
 
 # Confidence / Guardrail Skill
 
-A transparent, explainable guard between the tailoring step and the
-action layer. Uses keyword-overlap scoring (not opaque LLM judgment)
-so the reasoning is fully auditable.
+A transparent, explainable gate between tailoring and the action layer. Keyword overlap is
+auditable (you can see exactly which keywords matched), which is why it is a hard gate while
+the LLM fit review stays advisory.
 
-## Two thresholds
+## Thresholds
 
 | Threshold | Default | Meaning |
 |-----------|---------|---------|
-| `GUARDRAIL_THRESHOLD` | 40% | Below this → `needs_review=True`, all actions skipped except Slack notification |
-| `AUTO_SEND_THRESHOLD` | 70% | At/above this → Gmail draft is auto-sent immediately |
-
-Both thresholds are configurable via `.env`.
+| `GUARDRAIL_THRESHOLD` | 40% | Below → `needs_review=True`: Gmail, Calendar and CRM skipped, Slack gets the gap report |
+| `AUTO_SEND_THRESHOLD` | 70% | At/above → `auto_send_eligible=True` |
 
 ## Function
 
 ```python
 from agent.guardrail import score_overlap
-
 result = score_overlap(resume_text, requirements)
 ```
-
-### Input
-
-| Arg | Type | Description |
-|-----|------|-------------|
-| `resume_text` | `str` | Candidate's original resume |
-| `requirements` | `dict` | Output of `extract_requirements` |
-
-### Output
 
 ```json
 {
@@ -46,16 +34,19 @@ result = score_overlap(resume_text, requirements)
   "threshold": 0.4,
   "auto_send_threshold": 0.7,
   "auto_send_eligible": false,
-  "matched": ["Python", "FastAPI", "SQL"],
-  "missing": ["Kubernetes", "CI/CD"]
+  "matched": ["python", "fastapi", "sql"],
+  "missing": ["kubernetes", "ci/cd"]
 }
 ```
 
-- `needs_review`: `True` = skip Gmail/Sheets/Calendar/Drive, notify Slack
-- `auto_send_eligible`: `True` = Gmail can auto-send (never in MVP demo)
-- `matched` / `missing`: full lists of which keywords matched/didn't
+## How it combines with the other gates (in `agent/pipeline.py`)
 
-## Why keyword overlap
+Nothing is dispatched unless **all** pass: overlap ≥ `GUARDRAIL_THRESHOLD`, Executor receipts
+check `faithful`, no seniority mismatch (senior job + student resume), not a duplicate.
+Gmail *sends* only if additionally: Google account connected, user enabled *Allow sending*,
+recipient set, `auto_send_eligible`, Executor recommends proceed.
 
-Transparent and explainable to judges. A future improvement is an
-embedding-similarity or LLM-scored second opinion alongside this one.
+## Known limit
+
+Overlap can't tell a differently worded strong match from a weak one. The seniority gate covers
+the most common miss (a strong-keyword student applying to a staff role).

@@ -1,6 +1,6 @@
 """
 Shared reliability helpers used across every external integration
-(Google APIs, Slack, the job-board search). Two things live here:
+(Google APIs, Slack, the job-board search, the LLM). Three things live here:
 
 1. retry_with_backoff — retries a call on transient failures (rate limits,
    5xx errors, network hiccups) with exponential backoff + jitter, and
@@ -9,9 +9,31 @@ Shared reliability helpers used across every external integration
 2. classify_google_error — turns a raw googleapiclient HttpError into a
    short, judge-readable reason ("auth expired", "quota exceeded", etc.)
    instead of a raw stack trace, for the eval log and the UI.
+3. Chaos panel fault injection — FAULTS holds the outages switched on from
+   the UI or `eval.run_eval --faults`. maybe_fail(name) raises an error
+   shaped like the real outage, so the retry / classification / fallback
+   code above is what actually handles it — nothing is special-cased.
 """
 import random
 import time
+
+ALLOWED_FAULTS = ("gmail", "calendar", "crm", "slack", "llm_429", "google_auth")
+
+# ponytail: process-global fault set, fine for one demo user; per-request header if multi-user
+FAULTS: set[str] = set()
+
+
+class InjectedFault(Exception):
+    """Simulated outage from the chaos panel; carries the HTTP status a real outage would."""
+
+    def __init__(self, name: str, status: int = 503):
+        self.status = status
+        super().__init__(f"injected fault: {name} (HTTP {status})")
+
+
+def maybe_fail(name: str) -> None:
+    if name in FAULTS:
+        raise InjectedFault(name)
 
 
 def retry_with_backoff(fn, retries: int = 2, base_delay: float = 0.6, retryable_check=None):
@@ -38,6 +60,8 @@ def retry_with_backoff(fn, retries: int = 2, base_delay: float = 0.6, retryable_
 
 def is_retryable_google_error(exc: Exception) -> bool:
     """Rate limits and server-side 5xx errors are worth a retry; auth/permission/bad-request are not."""
+    if isinstance(exc, InjectedFault):
+        return exc.status in (429, 500, 502, 503)
     try:
         from googleapiclient.errors import HttpError
     except ImportError:
@@ -51,6 +75,8 @@ def is_retryable_google_error(exc: Exception) -> bool:
 
 def classify_google_error(exc: Exception) -> str:
     """Human-readable classification of a Google API failure, for logs/UI."""
+    if isinstance(exc, InjectedFault):
+        return f"service unavailable (HTTP {exc.status}, injected by chaos panel) — retried, then gave up"
     try:
         from googleapiclient.errors import HttpError
     except ImportError:

@@ -1,52 +1,37 @@
 ---
 name: calendar-followup
 description: >
-  Creates a 7-day follow-up reminder event on Google Calendar for every
-  application that clears the guardrail.
+  Creates an all-day Google Calendar follow-up 7 days out for every application
+  that clears the gates, with a link to the application email. Deleted by undo,
+  and cancelled automatically when the reply tracker sees a reply.
 ---
 
 # Calendar Follow-up Skill
 
-Schedules a calendar reminder 7 days after application so the candidate
-remembers to follow up.
-
-## When to use
-
-After the guardrail passes, alongside Gmail and Sheets actions.
-
 ## Function
 
 ```python
-from agent.calendar_action import create_followup_event
+from agent.calendar_action import create_followup_event, undo_event
 
-result = create_followup_event("Acme Corp", "Backend Engineer")
-# result: {"status": "ok"|"error"|"mocked", "detail": str, "live": bool}
+result = create_followup_event("Acme Corp", "Backend Engineer", email_link="https://mail.google.com/...")
+# {"status": "ok"|"error"|"mocked", "detail": str, "live": bool, "ref": {"event_id": ...}, "link": htmlLink}
+
+undo_event(result["ref"])   # deletes the event (or removes the mock entry)
 ```
 
-### Input
+## Chaining
 
-| Arg | Type | Description |
-|-----|------|-------------|
-| `company` | `str` | Target company name |
-| `role` | `str` | Target role title |
-
-### Output
-
-```json
-{
-  "status": "ok",
-  "detail": "Follow-up event created for Backend Engineer @ Acme Corp (2026-09-20)",
-  "live": true
-}
-```
-
-The event is created for 7 days from now at 10:00 AM local time.
+Runs after Gmail: the event description carries the email link, and the event's own link is
+passed on to the CRM deal and the Slack message.
 
 ## Mock mode
 
-Without Google credentials, events are logged to
-`eval/logs/calendar_mock.json` as a local fallback.
+Without Google credentials, events go to `eval/logs/calendar_mock.json`.
 
-## Scopes required
+## Chaos
+
+The `calendar` fault makes this skill fail like a 503 outage (retried, then reported).
+
+## Scope
 
 `https://www.googleapis.com/auth/calendar.events`

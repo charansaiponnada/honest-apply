@@ -1,0 +1,17 @@
+Full-Stack Engineering Intern — Campus Commerce Platform
+
+Spend 12 weeks shipping features on our marketplace used by 40 universities.
+You'll build React + TypeScript screens, write Node.js and Python REST API
+endpoints, and model data in PostgreSQL.
+
+Required:
+- Currently pursuing a CS degree (graduating 2026 or 2027)
+- React and TypeScript
+- REST API design
+- SQL, ideally PostgreSQL
+
+Nice to have:
+- Docker
+- Git and GitHub Actions
+
+Internship, entry level, remote-friendly.

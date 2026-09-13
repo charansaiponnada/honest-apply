@@ -29,9 +29,14 @@ def _mock_extract(jd_text: str) -> dict:
 
     seniority = "Mid-level"
     lowered = jd_text.lower()
-    if any(t in lowered for t in ("senior", "sr.", "5+ years", "lead")):
+
+    def has(*terms: str) -> bool:
+        # whole words only: "intern" must not match "internal", "lead" was dropped ("lead user research")
+        return any(re.search(rf"(?<![a-z]){re.escape(t)}(?![a-z])", lowered) for t in terms)
+
+    if has("senior", "sr.", "staff", "principal", "5+ years", "8+ years"):
         seniority = "Senior"
-    elif any(t in lowered for t in ("intern", "entry level", "new grad", "0-1 year", "junior")):
+    elif has("intern", "internship", "entry level", "entry-level", "new grad", "0-1 year", "junior"):
         seniority = "Entry-level"
 
     must_haves = []
@@ -61,7 +66,7 @@ and return ONLY a JSON object (no markdown, no commentary) with this exact shape
   "skills": ["list of specific technical/professional skills mentioned or implied"],
   "seniority": "Entry-level | Mid-level | Senior (pick the single best fit)",
   "must_haves": ["short list of explicitly required, non-negotiable qualifications"],
-  "keywords": ["broader list of resume-matchable keywords, ranked by importance"]
+  "keywords": ["concrete, resume-matchable terms (tools, languages, frameworks, methods, domains), ranked by importance; NO soft skills such as communication, teamwork or problem solving"]
 }}
 
 JOB DESCRIPTION:

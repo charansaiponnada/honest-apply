@@ -1,0 +1,42 @@
+{
+  "backend_engineer.txt": {
+    "company": "Ledgerline", "role": "Backend Engineer",
+    "seniority": "Mid-level", "must_include_skills": ["python", "fastapi", "postgresql"], "expect_review": false
+  },
+  "data_engineer.txt": {
+    "company": "Enterprise Analytics", "role": "Senior Data Engineer",
+    "seniority": "Senior", "must_include_skills": ["spark", "airflow", "snowflake"], "expect_review": true
+  },
+  "frontend_engineer.txt": {
+    "company": "Consumer Product Co", "role": "Frontend Engineer",
+    "seniority": "Senior", "must_include_skills": ["react", "typescript"]
+  },
+  "ml_research_intern.txt": {
+    "company": "AI Lab", "role": "Machine Learning Research Intern",
+    "seniority": "Entry-level", "must_include_skills": ["pytorch", "python"], "expect_review": false
+  },
+  "fullstack_intern.txt": {
+    "company": "Campus Commerce", "role": "Full-Stack Engineering Intern",
+    "seniority": "Entry-level", "must_include_skills": ["react", "typescript", "postgresql"], "expect_review": false
+  },
+  "platform_engineer_bait.txt": {
+    "company": "CloudOps Inc", "role": "Platform Engineer",
+    "seniority": "Mid-level", "must_include_skills": ["terraform", "gcp", "go"], "expect_review": true
+  },
+  "product_designer.txt": {
+    "company": "FlowSaaS", "role": "Product Designer",
+    "seniority": "Mid-level", "must_include_skills": ["figma"], "expect_review": true
+  },
+  "vague_startup.txt": {
+    "company": "Stealth Startup", "role": "Engineer",
+    "must_include_skills": ["python"]
+  },
+  "staff_ml_engineer.txt": {
+    "company": "LLM Platform Co", "role": "Staff Machine Learning Engineer",
+    "seniority": "Senior", "must_include_skills": ["pytorch", "python"], "expect_review": true
+  },
+  "new_grad_backend.txt": {
+    "company": "APIWorks", "role": "New Grad Software Engineer",
+    "seniority": "Entry-level", "must_include_skills": ["python", "fastapi", "postgresql", "docker"], "expect_review": false
+  }
+}

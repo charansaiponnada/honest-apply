@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent · Honest Apply</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="chaos-banner" class="chaos-banner" hidden></div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>Honest Apply</a>
+      <nav class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab" role="tab" data-tab="run" aria-selected="true">Run agent</button>
+        <button class="tab" role="tab" data-tab="tracker" aria-selected="false">Tracker</button>
+        <button class="tab" role="tab" data-tab="reliability" aria-selected="false">Reliability</button>
+      </nav>
+      <div class="status-row" id="status-row" aria-label="Integration status"></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ============ RUN ============ -->
+    <section id="tab-run" role="tabpanel">
+      <form id="run-form" class="run-grid" autocomplete="off">
+        <div>
+          <div class="card">
+            <details class="jobs" id="jobs">
+              <summary>Find a live job <span class="meta" id="jobs-count"></span></summary>
+              <input class="input" id="jobs-filter" type="search" placeholder="Filter by role, skill, company" style="margin-top:.6rem" aria-label="Filter jobs">
+              <p class="hint" id="jobs-hint">Arbeitnow, Remotive and RemoteOK. Public APIs, no scraping.</p>
+              <div class="job-list" id="job-list"></div>
+            </details>
+          </div>
+          <div class="card">
+            <div class="two-col">
+              <div class="field">
+                <label class="label" for="resume">Your resume</label>
+                <textarea class="textarea" id="resume" rows="14" required minlength="20"></textarea>
+              </div>
+              <div class="field">
+                <label class="label" for="jd">Job description</label>
+                <textarea class="textarea" id="jd" rows="14" required minlength="20" placeholder="Paste a job description, or pick a live job above."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="card pipeline" aria-live="polite">
+            <h2 class="section">Live pipeline</h2>
+            <div class="agents">
+              <div class="agent" data-agent="researcher"><span class="agent-num">1</span><div><div class="agent-name">Researcher</div><div class="agent-state">Reads the job post</div></div></div>
+              <div class="agent" data-agent="tailor"><span class="agent-num">2</span><div><div class="agent-name">Tailor</div><div class="agent-state">Rewrites with receipts</div></div></div>
+              <div class="agent" data-agent="executor"><span class="agent-num">3</span><div><div class="agent-name">Executor</div><div class="agent-state">Checks, then acts</div></div></div>
+            </div>
+            <div class="apps">
+              <span class="app-chip" data-app="gmail">Gmail</span><span class="app-arrow" aria-hidden="true">→</span>
+              <span class="app-chip" data-app="calendar">Calendar</span><span class="app-arrow" aria-hidden="true">→</span>
+              <span class="app-chip" data-app="crm">HubSpot</span><span class="app-arrow" aria-hidden="true">→</span>
+              <span class="app-chip" data-app="slack">Slack</span>
+            </div>
+            <div class="trace" id="trace" hidden></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="card">
+            <span class="label">Your apps</span>
+            <div class="field"><label class="label" for="user-id">Your email</label><input class="input" id="user-id" type="email" maxlength="200" placeholder="you@example.com" autocomplete="email"></div>
+            <div id="connections"></div>
+            <div class="field" style="margin-top:.7rem"><label class="label" for="slack-channel">Slack channel</label><input class="input" id="slack-channel" maxlength="80" placeholder="#job-applications"></div>
+            <p class="hint" id="connections-hint" style="margin-top:0"></p>
+          </div>
+          <div class="card">
+            <div class="field"><label class="label" for="company">Company</label><input class="input" id="company" maxlength="200"></div>
+            <div class="field"><label class="label" for="role">Role</label><input class="input" id="role" maxlength="200"></div>
+            <div class="field"><label class="label" for="recipient">Send to (optional)</label><input class="input" id="recipient" type="email" maxlength="320" placeholder="hiring@company.com"></div>
+            <div class="field">
+              <label class="switch"><input type="checkbox" id="allow-send" disabled><span>Allow sending<span class="hint" id="send-hint" style="display:block">Connect a Google account to enable.</span></span></label>
+            </div>
+            <button class="btn btn-block" id="run-btn" type="submit">Run agent</button>
+            <p class="hint" id="thresholds"></p>
+          </div>
+          <div class="card">
+            <span class="label">Chaos panel</span>
+            <p class="hint" style="margin:0 0 .6rem">Break things on purpose. The agent should retry, fall back or flag, never crash.</p>
+            <div class="chaos-grid" id="chaos"></div>
+          </div>
+        </aside>
+      </form>
+
+      <div id="error" class="callout danger" hidden style="margin-top:1rem"></div>
+      <div id="result" class="card" hidden style="margin-top:1rem"></div>
+    </section>
+
+    <!-- ============ TRACKER ============ -->
+    <section id="tab-tracker" role="tabpanel" hidden>
+      <div class="metrics" id="metrics"></div>
+      <div class="toolbar">
+        <input class="input" id="history-filter" type="search" placeholder="Search company or role" aria-label="Search applications">
+        <button class="btn btn-ghost btn-sm" id="sync-replies" type="button">Sync replies</button>
+        <span class="meta">Reply found → CRM deal moves to "replied", reminder cancelled, Slack pinged.</span>
+      </div>
+      <div id="history"></div>
+    </section>
+
+    <!-- ============ RELIABILITY ============ -->
+    <section id="tab-reliability" role="tabpanel" hidden>
+      <div class="card">
+        <h2 class="section">How we know it works</h2>
+        <p class="hint" style="margin-top:0">Ten job descriptions, including a poor fit and one that baits the agent into claiming skills you don't have. Each is scored on four checks: extraction, faithfulness, decision and actions. Run it normally, then with Gmail down and the model rate-limited.</p>
+        <div class="toolbar" style="margin:.8rem 0 0">
+          <button class="btn" id="eval-normal" type="button">Run test suite</button>
+          <button class="btn btn-ghost" id="eval-faults" type="button">Run with Gmail down + LLM 429</button>
+        </div>
+      </div>
+      <div id="eval-results" style="margin-top:1rem"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

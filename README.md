@@ -1,238 +1,159 @@
-# AI Job Application Agent
+# Honest Apply — the job agent that won't lie for you
 
-Built for the Multi-App AI Agent Hackathon (virtual, Sept 13, 2026), judged by Phillip Li
-and Akira Tong.
+Built for the Multi-App AI Agent Hackathon (virtual, Sept 13, 2026).
 
-Takes a resume and a job description and autonomously:
+Paste a resume and a job. **Three agents** read the job, tailor the candidate's *real*
+experience to it, prove every line, and then act across **four apps that hand off to each
+other**: Gmail, Google Calendar, HubSpot CRM and Slack. Built for individual job seekers,
+and ready for the teams who place candidates (career centers, staffing agencies).
 
-1. **Searches** live listings across three job boards (Arbeitnow, Remotive, RemoteOK — all
-   free, no key required) or accepts a pasted JD
-2. **Extracts** structured requirements from the JD (skills, seniority, must-haves, keywords)
-3. **Tailors** the resume and writes a cover note, grounded strictly in the candidate's
-   real, existing experience — the prompt explicitly forbids inventing skills or experience
-4. Runs a **guardrail check** (keyword overlap). Low-match applications are flagged for
-   human review instead of proceeding automatically
-5. **Acts** across five apps: creates a Gmail **draft** (and sends it automatically if the
-   score clears a second, stricter threshold — see Auto-send below), appends a tracking row
-   to **Sheets**, creates a 7-day follow-up **Calendar** event, saves the tailored resume to
-   **Drive**, and notifies **Slack** on every outcome — sent, drafted, or flagged
-6. **Logs** every run — inputs, outputs, guardrail decision, action results — to
-   `eval/logs/eval_log.json` for the reliability brief
-
-Six external integrations in total, double the hackathon's three-app minimum: Gmail,
-Sheets, Calendar, Drive, Slack, and three job boards behind one search interface.
-
-## Auto-send: two gates, not one
-
-Gmail always creates a draft. Whether that draft is also **sent automatically** is gated by
-two separate thresholds, both of which must clear:
-
-1. `GUARDRAIL_THRESHOLD` (default 40%) — the baseline guardrail. Below this, the run is
-   flagged for review and Gmail, Sheets, Calendar, and Drive don't run at all.
-2. `AUTO_SEND_THRESHOLD` (default 70%) — a materially stricter second bar. At or above
-   this, the draft is sent immediately. Between the two thresholds, the draft is created
-   but left for review — this is the default outcome for most applications, deliberately:
-   overlap score is not a reliable proxy for "this cover note is actually good," and
-   unreviewed sends at a low bar would hurt response rates more than they'd help.
-
-Both thresholds are configurable in `.env`. The result badge always shows which of the
-three outcomes occurred — auto-sent, drafted (awaiting review), or flagged for review —
-and Slack is notified with the same distinction on every run.
-
-**Job boards covered on purpose, and some left out on purpose.** Arbeitnow, Remotive, and
-RemoteOK are genuine free public APIs with no key and no scraping involved. LinkedIn,
-Indeed, and Glassdoor are not included: all three prohibit scraping in their Terms of
-Service and run active anti-bot protection to enforce it, so there is no legitimate
-free/no-key way to search them programmatically. That limit is stated plainly in the
-reliability brief rather than worked around.
-
-## Runs with zero setup
-
-If `OPENROUTER_API_KEY`, `credentials.json`, or `SLACK_WEBHOOK_URL` are absent, the app
-falls back to mock mode for that piece independently: a rule-based extractor/tailorer
-stands in for the LLM, and the Google/Slack actions write to local files under
-`eval/logs/` instead of calling real APIs. The job boards need no key at all — they're
-public read-only APIs. Clone the repo and the full pipeline runs immediately; wire up real
-credentials (below) whenever you're ready to go live.
-
-The status row at the top of the app shows live/mock state for the LLM, Google Workspace,
-and Slack independently.
-
-## Setup (to go live)
-
-### 1. OpenRouter API key (free, no card required)
-1. Go to [openrouter.ai/keys](https://openrouter.ai/keys), sign up, and generate an API key.
-2. Copy `.env.example` to `.env` and set `OPENROUTER_API_KEY`.
-3. The default model is `nvidia/nemotron-3-super-120b-a12b:free` — the best
-   free model on OpenRouter as of Sept 2026 for structured JSON output
-   (tested: valid extract/tailoring JSON in ~5s, 120B MoE, 262k context).
-   Set `OPENROUTER_MODEL` to override.
-
-### 2. Google Workspace APIs (Gmail, Sheets, Calendar, Drive) — free, no billing
-1. Create a project in [Google Cloud Console](https://console.cloud.google.com).
-2. Enable the Gmail, Sheets, Calendar, and Drive APIs.
-3. Create an OAuth 2.0 Client ID of type Desktop app.
-4. Download the client secret JSON and save it as `credentials.json` in the project root.
-5. On the OAuth consent screen, leave publish status as Testing and add your own Google
-   account as a test user — this skips verification review, which matters given the
-   turnaround before a hackathon deadline.
-6. The first live Google action opens a browser window to authorize; a `token.json` is
-   cached afterward. If that token later goes stale, the app detects it, discards it, and
-   re-triggers authorization automatically instead of silently failing.
-
-Scopes are intentionally narrow: `gmail.compose` (covers draft creation and the gated
-send — the app never sends outside that gate), `spreadsheets`, `calendar.events`, and
-`drive.file`. `credentials.json` and `token.json` are git-ignored.
-
-### 3. Slack notifications (free, under two minutes)
-1. Create an Incoming Webhook at
-   [api.slack.com/messaging/webhooks](https://api.slack.com/messaging/webhooks) — no bot
-   scopes or app review required.
-2. Set `SLACK_WEBHOOK_URL` in `.env`.
-
-### 4. Job boards — nothing to set up
-Arbeitnow, Remotive, and RemoteOK are public, unauthenticated APIs. They work immediately.
-
-### 5. Install and run
-```bash
-pip install -r requirements.txt
-streamlit run app.py
+```
+Job post + resume
+   │
+   ▼
+[1] Researcher ─ job post → structured requirements (skills, seniority, must-haves, keywords)
+   │
+   ▼
+[2] Tailor ───── resume + cover note, every line citing the original line it came from
+   │
+   ▼
+[3] Executor ─── review: receipts check (code) + fit review (LLM)
+   │             gates (code): overlap · receipts · seniority · duplicate
+   │             act: LLM tool calling picks which apps to use — can do less, never skip a gate
+   ▼
+Gmail draft ──link──▶ Calendar follow-up ──links──▶ HubSpot deal ──all links──▶ Slack
+   ▲                                                                              │
+   └──────── reply tracker: Gmail reply → deal "replied" → reminder cancelled → Slack
 ```
 
-### 6. Preflight check (run this first, on demo day)
-```bash
-python -m scripts.check_connections          # status only, no side effects
-python -m scripts.check_connections --ping    # also sends a real Slack test message
-                                               # and a real job-board search
-```
-Prints live/mock status for all six integrations so a broken credential shows up before
-judging, not during it. `--ping` never creates a real Gmail draft, Sheet row, Calendar
-event, or Drive file just from a check — only Slack (a harmless test message) and the job
-boards (a read-only search) are actually exercised.
+## Demo video
 
-### 7. Batch eval (for the reliability brief)
+**[Watch the 2-minute demo](ADD_VIDEO_LINK_BEFORE_SUBMITTING)**
+
+## Project overview
+
+**The problem:** students and early-career candidates applying at volume either spend an hour
+tailoring each application or mass-apply with a generic resume, and "AI auto-apply" tools make it
+worse by inventing experience. **What we built:** one multi-step agent (three specialized stages)
+that tailors a real resume to a real job, proves every line is true, and only then does the busywork
+across the apps the candidate already uses — email, calendar, CRM and chat — including follow-up
+when the employer replies.
+
+## External apps used
+
+| App | What the agent does there | How it connects |
+|---|---|---|
+| **Gmail** | Creates the application draft; sends only when every gate passes and the user allows it; reads replies | Per-user **Connect** via Composio, or server OAuth |
+| **Google Calendar** | Books a 7-day follow-up linked to the email; cancels it when a reply arrives | Per-user Composio, or server OAuth |
+| **HubSpot CRM** | Creates a deal for the application; moves it to *replied*, or *closed-lost* on undo | Per-user Composio, or `HUBSPOT_TOKEN` |
+| **Slack** | Reports every outcome with links, or why it stopped and the skills gap | Per-user Composio, or incoming webhook |
+| Job boards (Arbeitnow, Remotive, RemoteOK) | Read-only source of live job posts | Public APIs |
+| OpenRouter | LLM for the three agents, including tool calling | `OPENROUTER_API_KEY` |
+
+## What makes it different
+
+| | |
+|---|---|
+| **Receipts** | The Tailor cites a source line for every tailored line. The Executor verifies each in code (line similarity + every named tool, employer and number must exist in the original resume, cover note included). One unbacked claim blocks every app. |
+| **Hard gates in code** | Keyword overlap below `GUARDRAIL_THRESHOLD`, an unbacked claim, a senior job for a student resume, or a repeat application → nothing is sent; Slack gets a skills-gap report instead. |
+| **Apps that work together** | Each app's output feeds the next: the email link goes into the reminder, both go onto the CRM deal, Slack gets all three. The reply tracker closes the loop across all four. |
+| **Chaos panel** | Switch off Gmail, Calendar, HubSpot, Slack, the LLM (429) or the Google token from the UI or the eval CLI. The real retry, error-classification and fallback code handles it. |
+| **One-click undo** | Deletes the Gmail draft and Calendar event, moves the CRM deal to closed-lost, and tells Slack. A sent email can't be recalled, and undo says so. |
+| **Sending is earned** | Gmail sends only if a Google account is connected, the user turned on *Allow sending*, a recipient is set, overlap clears `AUTO_SEND_THRESHOLD`, and every receipt checks out. Otherwise it's a draft. |
+
+## Setup instructions
+
+### Run it
+
 ```bash
-python -m eval.run_eval
+uv sync                       # or: pip install -r requirements.txt
+uvicorn main:app --reload     # run from the repo root
 ```
-Runs the pipeline against every `.txt` file in `eval/sample_jds/` using
-`eval/sample_resume.txt`, prints a pass/fail table, and appends full results to
-`eval/logs/eval_log.json`. One sample JD (`data_engineer.txt`) is a deliberate poor fit so
-the guardrail's flagging behavior shows up in the reliability brief, not just the happy path.
+
+Open http://localhost:8000 for the landing page and http://localhost:8000/app for the agent.
+With no keys at all, every integration runs in a clearly labeled **mock mode** (local files
+under `eval/logs/`), so the whole pipeline works on a fresh clone.
+
+### Connect your own apps (in the app)
+
+With `COMPOSIO_API_KEY` set, the **Your apps** card in `/app` shows a **Connect** button for
+Gmail, Google Calendar, HubSpot and Slack. The user enters their email, clicks Connect, signs in
+on Composio's hosted page, and lands back in the app. [Composio](https://composio.dev) runs the
+OAuth flow and stores and refreshes the tokens; the agent then acts on *that user's* accounts.
+No Google Cloud project, HubSpot token or webhook needed per user.
+
+Per app, per run: the user's Composio connection → server `.env` credentials → mock. Undo and the
+reply tracker use whichever account the run used. Run `python -m scripts.check_connections --ping`
+after adding the key: it confirms every Composio tool the agent calls exists and prints its
+parameters.
+
+### Or go live with server keys (all free)
+
+Copy `.env.example` to `.env`, then:
+
+1. **LLM:** OpenRouter key from [openrouter.ai/keys](https://openrouter.ai/keys) → `OPENROUTER_API_KEY`.
+   The default free model is `nvidia/nemotron-3-super-120b-a12b:free`; override with `OPENROUTER_MODEL`.
+   `python -m scripts.check_connections --ping` tells you whether the model returns tool calls
+   (if not, the Executor falls back to deterministic dispatch and the UI says so).
+2. **Gmail + Calendar:** Google Cloud project → enable Gmail and Calendar APIs → OAuth client
+   (Desktop app) → save as `credentials.json`. Keep the consent screen in *Testing* and add yourself
+   as a test user. Scopes: `gmail.compose`, `gmail.readonly` (reply tracker), `calendar.events`.
+   The first Google action opens a browser; `token.json` is cached. If you authorized with an older
+   scope set, delete `token.json` once.
+3. **HubSpot CRM:** free account → Settings → Integrations → Private Apps → token with
+   `crm.objects.companies`, `crm.objects.contacts`, `crm.objects.deals` read/write → `HUBSPOT_TOKEN`.
+   Deals use the default pipeline's stage IDs; rename the stage labels in HubSpot (e.g. *Drafted,
+   Sent, Replied*) or override the IDs with `HUBSPOT_STAGE_*`.
+4. **Slack:** [Incoming Webhook](https://api.slack.com/messaging/webhooks) → `SLACK_WEBHOOK_URL`.
+5. **Job boards:** nothing to set up. Arbeitnow, Remotive and RemoteOK are public APIs. LinkedIn,
+   Indeed and Glassdoor are left out on purpose: their terms prohibit scraping.
+
+Preflight before demoing: `python -m scripts.check_connections --ping`.
+
+### Deploy (one service)
+
+Render/Railway web service, start command `uvicorn main:app --host 0.0.0.0 --port $PORT`.
+Set the `.env` values as environment variables. Hosts have no browser for Google OAuth, so
+authorize locally once and paste the contents of `token.json` into `GOOGLE_TOKEN_JSON`.
+Free tiers sleep, so open the URL a minute before the demo.
+
+## Reliability testing
+
+```bash
+python -m eval.run_eval                       # 10 job descriptions, 4 checks each
+python -m eval.run_eval --faults gmail,llm_429 # same suite with Gmail down and the LLM rate-limited
+python -m agent.executor                      # receipts self-check (catches an injected fake bullet)
+python -m agent.crm_action                    # candidate parsing self-check
+```
+
+The same runs are one click in the app's **Reliability** tab. Checks per job: extraction
+(seniority + expected skills), faithfulness (nothing unbacked reached an app), decision
+(flag-vs-proceed matches `eval/expected.json`), actions (all succeed, or under faults, every
+failure is reported with a reason and nothing crashes). Results, known failure modes and what we'd
+fix next: [docs/RELIABILITY.md](docs/RELIABILITY.md).
 
 ## Project structure
+
 ```
-/
-├── app.py                     # Streamlit UI
-├── resume.txt                 # Your real resume (drop here, loaded on startup)
-├── agent/
-│   ├── llm.py                  # OpenRouter wrapper + offline mock fallback
-│   ├── extract.py              # Skill 1: JD extraction
-│   ├── tailor.py                # Skill 2: resume/cover note tailoring
-│   ├── guardrail.py             # Skill 3: two-threshold guardrail (review + auto-send)
-│   ├── google_auth.py           # Shared OAuth helper (stale-token recovery, mock fallback)
-│   ├── utils.py                  # Retry/backoff + Google error classification
-│   ├── gmail_action.py           # Skill 4: Gmail draft + gated auto-send
-│   ├── sheets_action.py          # Skill 5: Sheets append
-│   ├── calendar_action.py        # Skill 6: Calendar follow-up event
-│   ├── drive_action.py           # Skill 7: Drive save
-│   ├── slack_action.py           # Skill 8: Slack notification
-│   ├── jobs_search.py            # Skill 0: multi-board live job search
-│   └── pipeline.py               # Orchestrates the full flow + eval logging
-├── skills/                    # 9 AI-discoverable agent skills (PRD §6)
-│   ├── jd-parsing/SKILL.md       # Skill 1: JD parsing
-│   ├── resume-tailoring/SKILL.md # Skill 2: resume tailoring
-│   ├── cover-note-generation/SKILL.md  # Skill 3: cover note
-│   ├── gmail-draft/SKILL.md      # Skill 4: Gmail draft
-│   ├── sheets-append/SKILL.md    # Skill 5: Sheets tracking
-│   ├── calendar-followup/SKILL.md # Skill 6: Calendar event
-│   ├── drive-save/SKILL.md       # Skill 7: Drive save
-│   ├── guardrail/SKILL.md        # Skill 8: guardrail/confidence
-│   ├── executor-fit-review/SKILL.md  # Agent 3: LLM fit-review gate
-│   └── eval-logging/SKILL.md     # Skill 9: eval logging
-├── scripts/
-│   └── check_connections.py     # Preflight status check for all 6 integrations
-├── eval/
-│   ├── sample_resume.txt
-│   ├── sample_jds/               # 4 placeholder JDs (incl. one deliberate poor fit)
-│   ├── logs/                     # eval_log.json + mock action outputs (git-ignored)
-│   └── run_eval.py
-├── .env.example
-├── .gitignore
-├── requirements.txt
-└── README.md
+main.py                    FastAPI: landing, app, JSON API, live run event stream
+web/                       index.html (three.js landing), app.html + app.js + styles.css (no build step)
+agent/
+  extract.py               Agent 1 — Researcher
+  tailor.py                Agent 2 — Tailor (with receipts)
+  executor.py              Agent 3 — receipts check, fit review, tool selection
+  pipeline.py              orchestration, gates, app chaining, run log
+  gmail_action.py          Gmail draft / gated send / undo
+  calendar_action.py       Calendar follow-up / undo
+  crm_action.py            HubSpot company + contact + deal / stage changes
+  slack_action.py          Slack messages
+  reply_tracker.py         Gmail reply → CRM stage → cancel reminder → Slack
+  undo.py                  reverse a run across apps
+  guardrail.py             keyword overlap + thresholds
+  llm.py                   OpenRouter JSON + tool calling, mock fallback
+  google_auth.py           OAuth (file or GOOGLE_TOKEN_JSON)
+  utils.py                 retries, error classification, chaos faults
+  jobs_search.py           live job boards
+eval/                      run_eval.py, expected.json, sample_jds/ (10), sample_resume.txt
+scripts/check_connections.py
+skills/                    SKILL.md per agent skill
 ```
-
-## Design
-
-The UI follows the PRD §8 palette: professional-but-approachable instead of
-generic SaaS-blue — terracotta CTAs, olive/sage success states, a cream
-background, warm charcoal text, golden-amber flags for low-confidence review,
-and warm-ivory cards with soft borders. A single Inter typeface keeps the
-weight scale minimal. Status is communicated with small dot indicators,
-outline badges, and the 3-agent Researcher → Tailor → Executor pipeline
-stepper, so the multi-step agent stays visible during the demo. The palette
-lives in `.streamlit/config.toml` for native widgets and is mirrored as
-design tokens for the custom stepper, cards, badges, and action checklist.
-
-## MVP vs. production scope
-
-This build extends the hackathon MVP scope with two integrations (Slack, multi-board
-search) beyond the original four: pasted or live-searched JD text (no resume file-upload
-parsing yet), single one-shot LLM calls for extraction and tailoring, a two-threshold
-keyword-overlap guardrail, a single tracking sheet, one static 7-day follow-up event, and
-local/notebook-style hosting for the live demo. The planned production version adds resume
-upload parsing, JD auto-scraping from additional (including paid) job-board sources,
-multi-pass extraction with validation, ATS keyword scoring, a full analytics dashboard,
-smart calendar scheduling, multi-user auth, and a continuous eval/regression pipeline.
-
-## Reliability notes
-
-- Every `*_action.py` skill is wrapped in `try/except` so one failing action never crashes
-  the run — failures are classified and recorded in the log instead of a raw stack trace.
-- The four Google actions retry transient failures (rate limits, 5xx errors) with
-  exponential backoff via `agent/utils.py`, but fail fast on auth/permission errors rather
-  than retrying something that can't succeed.
-- `google_auth.py` recovers from a stale or revoked OAuth token automatically instead of
-  caching a broken client for the rest of the run.
-- The tailoring prompt carries an explicit, hard anti-hallucination constraint, and the
-  offline mock tailorer only ever reorders and reuses lines already in the original resume
-  for the same reason.
-- Auto-send is gated by two independent thresholds (see above), not one — low-overlap
-  applications are routed to `needs_review` and skip Gmail/Sheets/Calendar/Drive entirely,
-  while Slack still fires so a human finds out either way.
-- `scripts/check_connections.py` gives a single pre-demo status check across all six
-  integrations instead of discovering a broken one mid-judging.
-
-## What would make this better
-
-Roughly in priority order if there were more than a day:
-
-1. **Resume upload with real parsing** (PDF/DOCX via a proper parser, not pasted text) —
-   the single biggest gap between this and something a real candidate would use daily.
-2. **A second LLM-as-judge pass on tailoring faithfulness** — right now the anti-
-   hallucination constraint is enforced only by the prompt; a cheap second pass that
-   diffs claims in the tailored resume against the original and flags anything
-   unsupported would make the "never invent experience" claim independently checkable,
-   not just prompted-for.
-3. **A smarter guardrail than keyword overlap** — overlap is transparent and easy to
-   explain to judges, but it is a weak signal (it can't tell a well-matched but
-   differently-worded resume from a poorly-matched one). An embedding-similarity or
-   LLM-scored guardrail, kept alongside keyword overlap as a second opinion rather than a
-   replacement, would catch cases keyword matching misses in both directions.
-4. **Per-user auth and multi-tenant credential storage** — today one OAuth client and one
-   `.env` serve one person; going further, credentials would need to move server-side and
-   per-user.
-5. **Application deduplication** — nothing currently stops the agent from applying to the
-   same company/role twice across separate runs; the tracking sheet already has the data
-   to check against, it's just not consulted yet.
-6. **A real evaluation set instead of four hand-written JDs** — the reliability brief
-   would be stronger with a larger, more varied test set (different seniorities,
-   industries, and deliberately adversarial JDs) and a tracked pass-rate trend across
-   iterations, not a single snapshot.
-7. **Rate-limiting and cooldown on Slack/email actions** — nothing currently caps how many
-   applications this could send in a burst if pointed at a large batch; a daily cap
-   alongside the auto-send threshold would be a cheap, real safety improvement.
-8. **Observability beyond the JSON log** — `eval_log.json` is fine for a hackathon, but a
-   lightweight dashboard (even a second Streamlit page) reading that log over time would
-   make trends in guardrail pass rate and action failures visible at a glance instead of
-   requiring someone to read raw JSON.
