@@ -184,6 +184,7 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
         a["status"] in ("ok", "mocked") for k, a in actions.items() if k != "slack"
     )
     used_live_llm = extract_live and tailor_live and review_live
+    llm_live = {"researcher": extract_live, "tailor": tailor_live, "executor": review_live}
 
     result = {
         "run_id": run_id,
@@ -194,6 +195,7 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
         "requirements": requirements,
         "candidate": candidate["name"],
         "resume_lines": resume_lines(resume_text),
+        "llm_live": llm_live,
         "composio_apps": sorted(connected),
         "tailored_resume": tailoring["tailored_resume"],
         "cover_note": tailoring["cover_note"],
@@ -219,6 +221,7 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
         "recipient": recipient,
         "user_id": user_id,
         "slack_channel": slack_channel,
+        "llm_live": llm_live,
         "composio_apps": sorted(connected),
         "candidate": candidate["name"],
         "requirements": requirements,

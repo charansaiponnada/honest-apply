@@ -48,8 +48,19 @@ def _claim_tokens(text: str) -> set[str]:
     return tokens
 
 
+_SUFFIXES = ("ful", "based", "driven", "powered", "ing", "ed", "s")
+
+
 def _in_text(token: str, text_lower: str) -> bool:
-    return re.search(rf"(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])", text_lower) is not None
+    if re.search(rf"(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])", text_lower):
+        return True
+    # A word form of something the resume already names still has a receipt: "RESTful" <- "REST".
+    # ponytail: fixed suffix list; a stemmer if more legit rewordings get blocked
+    return any(
+        token.endswith(suffix) and len(token) - len(suffix) >= 3
+        and re.search(rf"(?<![a-z0-9]){re.escape(token[: -len(suffix)])}(?![a-z0-9])", text_lower)
+        for suffix in _SUFFIXES
+    )
 
 
 def check_receipts(original_resume: str, tailoring: dict, exclude=()) -> tuple[list[dict], list[str]]:
@@ -225,6 +236,13 @@ if __name__ == "__main__":
     padded_note = dict(honest, cover_note="I have 5 years of AWS experience.")
     _, bad = check_receipts(original, padded_note)
     assert bad and "aws" in bad[-1].lower(), bad
+
+    # a word form of a real skill passes ("RESTful" <- "REST"); an invented word doesn't
+    rest = "- Built REST APIs in Python using FastAPI"
+    _, bad = check_receipts(rest, {"tailored_resume": "- Developed RESTful APIs with Python/FastAPI", "evidence": [], "cover_note": ""})
+    assert not bad, bad
+    _, bad = check_receipts(rest, {"tailored_resume": "- Developed RESTful APIs with Python/FastAPI on GraphQL", "evidence": [], "cover_note": ""})
+    assert bad and "graphql" in bad[0].lower(), bad
 
     # a heading that only changed case still has a receipt
     _, bad = check_receipts("SUMMARY\nEDUCATION\nB.S. Computer Science", {"tailored_resume": "Education\nSummary", "evidence": [], "cover_note": ""})

@@ -98,9 +98,13 @@ def run_batch(faults=()) -> dict:
                     "outcome": result["outcome"],
                     "unsupported": len(result["executor_verdict"]["unsupported_claims"]),
                     "live_llm": result["used_live_llm"],
+                    "fell_back": [agent for agent, live in result["llm_live"].items() if not live],
                     **checks,
                     "passed": all(checks.values()),
                 })
+                fell_back = rows[-1]["fell_back"]
+                print(f"[{len(rows)}] {name}: {result['outcome']}, {'PASS' if rows[-1]['passed'] else 'FAIL'}"
+                      + (f", fallback: {', '.join(fell_back)}" if fell_back else ", all agents live"), flush=True)
             except Exception as exc:  # noqa: BLE001 - a crash is exactly what the eval must catch
                 rows.append({"jd_file": name, "error": str(exc), **{c: False for c in CRITERIA}, "passed": False})
     finally:
@@ -144,6 +148,8 @@ def main() -> None:
             f"{r['jd_file']:30} {r['seniority']:12} {r['overlap']*100:>6.0f}%  {r['outcome']:10} "
             f"{flag(r['extraction']):8} {flag(r['faithfulness']):9} {flag(r['decision']):9} "
             f"{flag(r['actions']):8} {'PASS' if r['passed'] else 'FAIL'}"
+            + (f"  (fallback: {', '.join(r['fell_back'])})" if r.get("fell_back") else ""),
+            flush=True,
         )
     mode = f" under faults [{', '.join(faults)}]" if faults else ""
     print(f"\n{summary['passed']}/{summary['total']} test JDs passed{mode}.")
