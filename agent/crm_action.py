@@ -25,7 +25,7 @@ from datetime import date
 import requests
 
 from agent import composio_client as composio
-from agent.utils import InjectedFault, maybe_fail, retry_with_backoff
+from agent.utils import SIMULATED, InjectedFault, maybe_fail, retry_with_backoff
 
 _API = "https://api.hubapi.com"
 _MOCK_JSON = os.path.join("eval", "logs", "crm_mock.json")
@@ -45,7 +45,7 @@ def _token() -> str:
 
 
 def is_live() -> bool:
-    return bool(_token())
+    return bool(_token()) and not SIMULATED.get()
 
 
 def _stage(name: str) -> str:

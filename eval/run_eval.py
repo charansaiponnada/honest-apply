@@ -93,6 +93,7 @@ def run_batch(faults=(), pace: float = 0.0) -> dict:
                     role=expected.get("role", os.path.splitext(name)[0].replace("_", " ").title()),
                     jd_source=name,
                     dedup=False,
+                    simulate=True,  # measure the agent, never post to real accounts
                 )
                 checks = _score(result, expected, faults)
                 rows.append({

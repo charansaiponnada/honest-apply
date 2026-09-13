@@ -15,6 +15,8 @@ import os
 import re
 from functools import lru_cache
 
+from agent.utils import SIMULATED
+
 APP_TOOLKITS = {"gmail": "gmail", "calendar": "googlecalendar", "crm": "hubspot", "slack": "slack"}
 TOOL_SLUGS = (
     "GMAIL_CREATE_EMAIL_DRAFT", "GMAIL_SEND_DRAFT", "GMAIL_DELETE_DRAFT", "GMAIL_FETCH_EMAILS",
@@ -78,7 +80,7 @@ def connect_link(user_id: str, app: str, callback_url: str) -> str:
 
 def connected_apps(user_id: str) -> set[str]:
     """Which of our apps this user has an ACTIVE Composio connection for."""
-    if not (is_enabled() and valid_user_id(user_id)):
+    if SIMULATED.get() or not (is_enabled() and valid_user_id(user_id)):
         return set()
     try:
         resp = _client().connected_accounts.list(

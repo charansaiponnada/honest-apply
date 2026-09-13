@@ -75,6 +75,11 @@ uvicorn main:app --reload     # run from the repo root
 
 Open http://localhost:8000 for the landing page and http://localhost:8000/app for the agent.
 
+**Judges: open http://localhost:8000/demo.** It walks through the whole flow in 11 screens (connect apps, three
+agents, receipts, apps handing off, reply loop, fabrication gate, chaos test, undo, proof) and runs in
+**Simulated** mode by default, so every step works on a fresh clone with no accounts or keys. Flip **Live apps**
+in its header to act on connected Gmail, Calendar, HubSpot and Slack accounts.
+
 The landing page (`/`) and the dashboard (`/app`) are one React + [shadcn/ui](https://ui.shadcn.com) app (Vite,
 Tailwind v4, Base UI) in `frontend/`, split into a chunk per page. The dashboard uses the shadcn Sidebar, Table,
 Chart, Tabs and Field components; the landing page is built from shadcn components only. The visual system (teal

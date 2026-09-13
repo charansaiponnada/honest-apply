@@ -22,7 +22,7 @@ Hardening notes:
 import json
 import os
 
-from agent.utils import FAULTS
+from agent.utils import FAULTS, SIMULATED
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.compose",
@@ -50,7 +50,7 @@ def _run_flow():
 def get_credentials():
     """Return valid OAuth credentials, or None if unavailable (-> mock mode)."""
     global _creds_cache, _checked
-    if "google_auth" in FAULTS:
+    if "google_auth" in FAULTS or SIMULATED.get():
         return None
     if _checked:
         return _creds_cache

@@ -9,8 +9,9 @@ from the recipient. When one has arrived:
 
 Each run is checked through the Gmail it was sent from: the user's Composio
 connection, else the .env OAuth credentials. A live check needs a sent email
-with a recipient (a draft can't be replied to). With neither, mock mode reads
-eval/logs/mock_replies.json, which the app's "Simulate reply" button writes.
+with a recipient (a draft can't be replied to). Simulated runs, and runs marked
+with "Simulate reply" (eval/logs/mock_replies.json), complete the loop without
+Gmail, and a simulated run's updates stay simulated.
 """
 import json
 import os
@@ -22,7 +23,7 @@ from agent.crm_action import set_deal_stage
 from agent.google_auth import get_credentials
 from agent.pipeline import load_eval_log, save_eval_log
 from agent.slack_action import send_text
-from agent.utils import classify_google_error, is_retryable_google_error, retry_with_backoff
+from agent.utils import SIMULATED, classify_google_error, is_retryable_google_error, retry_with_backoff
 
 _MOCK_REPLIES = os.path.join("eval", "logs", "mock_replies.json")
 
@@ -70,8 +71,28 @@ def _find_oauth_reply(service, entry: dict) -> str | None:
     return _reply_link(messages[0]["id"] if messages else None)
 
 
-def sync_replies() -> dict:
-    """Returns {"mode", "checked", "replies": [{run_id, company, role, link, results} | {run_id, error}]}."""
+def _close_loop(entry: dict, link: str | None) -> dict:
+    """CRM -> replied, cancel the follow-up, tell Slack. Each app isolated, like undo."""
+    refs = entry.get("refs") or {}
+    results = {}
+    for app, step in (("crm", lambda ref: set_deal_stage(ref, "replied")), ("calendar", undo_event)):
+        if not refs.get(app):
+            continue
+        try:
+            results[app] = step(refs[app])
+        except Exception as exc:  # noqa: BLE001 - one app failing shouldn't stop the reply loop
+            results[app] = {"status": "error", "detail": f"Reply update failed: {classify_google_error(exc)}"}
+    text = f":tada: *Reply received* — {entry['role']} @ {entry['company']}. Follow-up reminder cancelled, CRM deal moved to replied."
+    if link:
+        text += f"\n<{link}|Open the reply>"
+    slack_user = entry.get("user_id", "") if "slack" in (entry.get("composio_apps") or []) else ""
+    results["slack"] = send_text(text, user_id=slack_user, channel=entry.get("slack_channel", ""))
+    return results
+
+
+def sync_replies(run_id: str | None = None) -> dict:
+    """Returns {"mode", "checked", "replies": [{run_id, company, role, link, results} | {run_id, error}]}.
+    With run_id, only that run is processed: "Simulate reply" on one run must never act on other pending runs."""
     entries = load_eval_log()
     creds = get_credentials()
     mock_replied = _mock_replied()
@@ -81,10 +102,12 @@ def sync_replies() -> dict:
     for entry in entries:
         if not entry.get("run_id") or entry.get("undone") or entry.get("replied"):
             continue
-        apps = entry.get("composio_apps") or []
-        gmail_user = entry.get("user_id", "") if "gmail" in apps else ""
-        simulated = entry["run_id"] in mock_replied  # an explicit "Simulate reply" always completes the loop
-        live = bool(gmail_user or creds) and not simulated
+        if run_id is not None and entry["run_id"] != run_id:
+            continue
+        simulated_run = bool(entry.get("simulated"))
+        marked = entry["run_id"] in mock_replied  # an explicit "Simulate reply" always completes the loop
+        gmail_user = entry.get("user_id", "") if "gmail" in (entry.get("composio_apps") or []) and not simulated_run else ""
+        live = bool(gmail_user or (creds and not simulated_run)) and not marked
         if entry.get("outcome") not in (("sent",) if live else ("sent", "drafted")):
             continue
         if live and not entry.get("recipient"):
@@ -93,41 +116,29 @@ def sync_replies() -> dict:
         any_live = any_live or live
 
         try:
-            if simulated:
-                link = "mock"
+            if not live:
+                if not marked:
+                    continue
+                link = None
             elif gmail_user:
                 link = _find_composio_reply(gmail_user, entry)
-            elif creds:
+            else:
                 if service is None:
                     from googleapiclient.discovery import build
 
                     service = build("gmail", "v1", credentials=creds)
                 link = _find_oauth_reply(service, entry)
-            elif entry["run_id"] in mock_replied:
-                link = "mock"
-            else:
+            if live and not link:
                 continue
         except Exception as exc:  # noqa: BLE001 - one lookup failing shouldn't stop the sync
             replies.append({"run_id": entry["run_id"], "error": classify_google_error(exc)})
             continue
-        if not link:
-            continue
-        link = None if link == "mock" else link
 
-        refs = entry.get("refs") or {}
-        results = {}
-        for app, step in (("crm", lambda ref: set_deal_stage(ref, "replied")), ("calendar", undo_event)):
-            if not refs.get(app):
-                continue
-            try:
-                results[app] = step(refs[app])
-            except Exception as exc:  # noqa: BLE001 - one app failing shouldn't stop the reply loop (same as undo)
-                results[app] = {"status": "error", "detail": f"Reply update failed: {classify_google_error(exc)}"}
-        text = f":tada: *Reply received* — {entry['role']} @ {entry['company']}. Follow-up reminder cancelled, CRM deal moved to replied."
-        if link:
-            text += f"\n<{link}|Open the reply>"
-        slack_user = entry.get("user_id", "") if "slack" in apps else ""
-        results["slack"] = send_text(text, user_id=slack_user, channel=entry.get("slack_channel", ""))
+        token = SIMULATED.set(simulated_run)
+        try:
+            results = _close_loop(entry, link)
+        finally:
+            SIMULATED.reset(token)
 
         entry.update(replied=True, reply_link=link, reply_results=results)
         replies.append({"run_id": entry["run_id"], "company": entry["company"], "role": entry["role"],

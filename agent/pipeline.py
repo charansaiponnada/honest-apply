@@ -32,7 +32,7 @@ from agent.google_auth import is_live as google_is_live
 from agent.guardrail import score_overlap
 from agent.slack_action import notify_run_result
 from agent.tailor import resume_lines, tailor_application
-from agent.utils import FAULTS
+from agent.utils import FAULTS, SIMULATED
 
 EVAL_LOG_PATH = os.path.join("eval", "logs", "eval_log.json")
 
@@ -81,6 +81,16 @@ def _gap_report(resume_text: str, requirements: dict, guardrail: dict, verdict: 
     }
 
 
+def run_pipeline(*args, simulate: bool = False, **kwargs) -> dict:
+    """Run the agent once. simulate=True keeps every app in mock mode for this run only (no real accounts),
+    and the run is recorded as simulated so its undo and reply stay simulated too."""
+    token = SIMULATED.set(simulate)
+    try:
+        return _run_pipeline(*args, **kwargs)
+    finally:
+        SIMULATED.reset(token)
+
+
 _EARLY_CAREER = re.compile(r"\b(student|intern|internship|new grad|undergraduate|expected (19|20)\d\d)\b", re.I)
 
 
@@ -91,7 +101,7 @@ def _seniority_gap(resume_text: str, requirements: dict) -> str | None:
     return None
 
 
-def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
+def _run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
                  jd_source: str = "pasted text", recipient: str = "", allow_send: bool = False, dedup: bool = True,
                  user_id: str = "", slack_channel: str = "", github_username: str = "",
                  progress_cb=None) -> dict:
@@ -210,6 +220,7 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
         "candidate": candidate["name"],
         "resume_lines": resume_lines(resume_text),
         "github": github,
+        "simulated": SIMULATED.get(),
         "llm_live": llm_live,
         "composio_apps": sorted(connected),
         "tailored_resume": tailoring["tailored_resume"],
@@ -237,6 +248,7 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
         "user_id": user_id,
         "slack_channel": slack_channel,
         "github": github,
+        "simulated": SIMULATED.get(),
         "llm_live": llm_live,
         "composio_apps": sorted(connected),
         "candidate": candidate["name"],

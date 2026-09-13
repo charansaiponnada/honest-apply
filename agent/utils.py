@@ -16,11 +16,16 @@ Shared reliability helpers used across every external integration
 """
 import random
 import time
+from contextvars import ContextVar
 
 ALLOWED_FAULTS = ("gmail", "calendar", "crm", "slack", "llm_429", "google_auth")
 
 # ponytail: process-global fault set, fine for one demo user; per-request header if multi-user
 FAULTS: set[str] = set()
+
+# Simulated runs (/demo default, the eval suite): every app uses its mock path for this run only, even when
+# Composio connections or server keys exist. A ContextVar, so a simulated run never affects a concurrent live one.
+SIMULATED: ContextVar[bool] = ContextVar("simulated", default=False)
 
 
 class InjectedFault(Exception):

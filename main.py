@@ -11,6 +11,7 @@ import asyncio
 import json
 import re
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 
@@ -204,6 +205,7 @@ class RunRequest(BaseModel):
     slack_channel: str = Field(**_SLACK_CHANNEL)
     github_username: str = Field(**_GITHUB)
     allow_duplicate: bool = False  # /demo re-runs the same job; real runs keep the duplicate gate
+    simulate: bool = False  # every app in mock mode for this run only (no real accounts touched)
 
 
 @app.post("/api/run")
@@ -225,6 +227,7 @@ async def run(req: RunRequest):
             slack_channel=req.slack_channel,
             github_username=req.github_username,
             dedup=not req.allow_duplicate,
+            simulate=req.simulate,
             progress_cb=emit,
         )
         emit({"type": "result", "result": result})
@@ -308,11 +311,12 @@ def replies_sync():
 
 @app.post("/api/replies/simulate/{run_id}")
 def replies_simulate(run_id: str):
-    if google_is_live():
+    simulated_run = any(e.get("run_id") == run_id and e.get("simulated") for e in load_eval_log())
+    if google_is_live() and not simulated_run:
         raise HTTPException(409, "A Google account is connected, so replies are read from Gmail. Use Sync replies.")
     if not simulate_reply(run_id):
         raise HTTPException(404, "Run not found.")
-    return sync_replies()
+    return sync_replies(run_id)
 
 
 class FaultsRequest(BaseModel):
@@ -368,6 +372,7 @@ def connections(user_id: str = ""):
 
 class LinkRequest(BaseModel):
     user_id: str = Field(min_length=1, max_length=200, pattern=r"^[\w.@+-]+$")
+    return_to: Literal["app", "demo"] = "app"  # which page Composio sends the user back to
 
 
 @app.post("/api/connections/{app_name}/link")
@@ -377,7 +382,7 @@ def connection_link(app_name: str, req: LinkRequest, request: Request):
     if not composio_enabled():
         raise HTTPException(409, "One-click Connect needs COMPOSIO_API_KEY on the server.")
     try:
-        url = connect_link(req.user_id, app_name, callback_url=f"{request.base_url}app?connected={app_name}")
+        url = connect_link(req.user_id, app_name, callback_url=f"{request.base_url}{req.return_to}?connected={app_name}")
     except Exception as exc:  # noqa: BLE001 - surface Composio's reason to the user
         raise HTTPException(502, f"Composio couldn't create a connect link: {exc}")
     return {"redirect_url": url}

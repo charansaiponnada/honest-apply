@@ -14,7 +14,7 @@ from functools import lru_cache
 import requests
 
 from agent import composio_client as composio
-from agent.utils import InjectedFault, maybe_fail, retry_with_backoff
+from agent.utils import SIMULATED, InjectedFault, maybe_fail, retry_with_backoff
 
 _MOCK_LOG = os.path.join("eval", "logs", "slack_mock.log")
 _TIMEOUT_SECONDS = 10
@@ -26,7 +26,7 @@ def _webhook_url() -> str:
 
 
 def is_live() -> bool:
-    return bool(_webhook_url())
+    return bool(_webhook_url()) and not SIMULATED.get()
 
 
 @lru_cache(maxsize=64)

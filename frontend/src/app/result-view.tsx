@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-function Receipts({ result }: { result: RunResult }) {
+export function Receipts({ result }: { result: RunResult }) {
   const [active, setActive] = useState<number | null>(null)
   const receipts = result.executor_verdict.receipts ?? []
   const unsupported = receipts.filter((r) => !r.supported).length
@@ -70,7 +70,7 @@ function Receipts({ result }: { result: RunResult }) {
 const gapCount = (g: GapReport) =>
   g.missing_must_haves.length + g.missing_keywords.length + g.unsupported_claims.length + (g.seniority ? 1 : 0)
 
-function Gaps({ gaps }: { gaps: GapReport }) {
+export function Gaps({ gaps }: { gaps: GapReport }) {
   if (!gapCount(gaps)) {
     return (
       <Empty>
