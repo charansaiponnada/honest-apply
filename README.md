@@ -106,14 +106,17 @@ is a reordering of the original lines rather than an LLM rewrite, and every line
 
 ```mermaid
 flowchart LR
-    JD[Job post] --> R["Researcher<br/>requirements plan"]
-    CV["Resume + public GitHub"] --> T
-    R --> T["Tailor<br/>rewrite with receipts"]
-    T --> X{"Executor<br/>4 gates in code"}
-    X -- "any gate fails" --> F["Slack: flagged + skills gap<br/>(no other app touched)"]
-    X -- "all pass" --> P["LLM tool plan"]
-    P --> G[Gmail draft] --> C["Calendar follow-up<br/>+ email link"] --> H["HubSpot deal<br/>+ both links"] --> S["Slack summary<br/>+ all links"]
-    Reply[Employer reply] --> L["Deal → replied · reminder cancelled · Slack ping"]
+    JD[Job post] --> R[Researcher: requirements plan]
+    CV[Resume and public GitHub] --> T[Tailor: rewrite with receipts]
+    R --> T
+    T --> X{Executor: 4 gates in code}
+    X -->|any gate fails| F[Slack: flagged with skills gap, no other app touched]
+    X -->|all pass| P[LLM tool plan]
+    P --> G[Gmail draft]
+    G --> C[Calendar follow-up with email link]
+    C --> H[HubSpot deal with both links]
+    H --> S[Slack summary with all links]
+    Reply[Employer reply] --> L[Deal moved to replied, reminder cancelled, Slack ping]
 ```
 
 | Stage | What happens | Output |
