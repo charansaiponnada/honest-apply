@@ -50,6 +50,12 @@ _background: set[asyncio.Task] = set()
 app = FastAPI(title="AI Job Application Agent")
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
+# The React + shadcn app (frontend/) builds into web/app-dist with base "/app/". The build is committed,
+# so running the server needs no Node; without a build, /app falls back to the plain HTML app.
+APP_DIST = WEB_DIR / "app-dist"
+if (APP_DIST / "assets").is_dir():
+    app.mount("/app/assets", StaticFiles(directory=APP_DIST / "assets"), name="app-assets")
+
 
 def _event_stream(job) -> StreamingResponse:
     """Run job(emit) in a worker thread and stream every emitted event to the browser as SSE."""
@@ -86,7 +92,8 @@ def landing():
 
 @app.get("/app", include_in_schema=False)
 def agent_app():
-    return FileResponse(WEB_DIR / "app.html")
+    built = APP_DIST / "index.html"
+    return FileResponse(built if built.exists() else WEB_DIR / "app.html")
 
 
 @app.get("/api/status")

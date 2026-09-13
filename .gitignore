@@ -5,4 +5,6 @@ __pycache__/
 *.pyc
 .streamlit/secrets.toml
 eval/logs/*.json
+frontend/node_modules/
+frontend/dist/
 !eval/logs/.gitkeep

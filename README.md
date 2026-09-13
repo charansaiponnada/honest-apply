@@ -74,6 +74,16 @@ uvicorn main:app --reload     # run from the repo root
 ```
 
 Open http://localhost:8000 for the landing page and http://localhost:8000/app for the agent.
+
+The agent UI is a React + [shadcn/ui](https://ui.shadcn.com) app (Vite, Tailwind v4, Base UI) in `frontend/`.
+Its production build is committed in `web/app-dist`, so running the server needs no Node. To change the UI:
+
+```bash
+cd frontend
+npm install
+npm run dev     # http://localhost:5173/app/, proxies /api to uvicorn on :8000
+npm run build   # typechecks, then writes ../web/app-dist (served at /app)
+```
 With no keys at all, every integration runs in a clearly labeled **mock mode** (local files
 under `eval/logs/`), so the whole pipeline works on a fresh clone.
 
