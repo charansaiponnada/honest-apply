@@ -50,11 +50,17 @@ _background: set[asyncio.Task] = set()
 app = FastAPI(title="AI Job Application Agent")
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
-# The React + shadcn app (frontend/) builds into web/app-dist with base "/app/". The build is committed,
-# so running the server needs no Node; without a build, /app falls back to the plain HTML app.
+# The React + shadcn app (frontend/) renders both the landing page (/) and the dashboard (/app). It builds
+# into web/app-dist, which is committed, so running the server needs no Node; without a build, both routes
+# fall back to the plain HTML pages.
 APP_DIST = WEB_DIR / "app-dist"
 if (APP_DIST / "assets").is_dir():
-    app.mount("/app/assets", StaticFiles(directory=APP_DIST / "assets"), name="app-assets")
+    app.mount("/assets", StaticFiles(directory=APP_DIST / "assets"), name="app-assets")
+
+
+def _spa(fallback: str) -> FileResponse:
+    built = APP_DIST / "index.html"
+    return FileResponse(built if built.exists() else WEB_DIR / fallback)
 
 
 def _event_stream(job) -> StreamingResponse:
@@ -87,13 +93,12 @@ def _event_stream(job) -> StreamingResponse:
 
 @app.get("/", include_in_schema=False)
 def landing():
-    return FileResponse(WEB_DIR / "index.html")
+    return _spa("index.html")
 
 
 @app.get("/app", include_in_schema=False)
 def agent_app():
-    built = APP_DIST / "index.html"
-    return FileResponse(built if built.exists() else WEB_DIR / "app.html")
+    return _spa("app.html")
 
 
 @app.get("/api/status")

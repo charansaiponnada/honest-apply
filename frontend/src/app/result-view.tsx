@@ -151,7 +151,7 @@ function Actions({ actions }: { actions: Record<string, ActionResult> }) {
                 <span className="text-sm text-muted-foreground">{action.detail}</span>
               </div>
               {link ? (
-                <Button variant="outline" size="sm" render={<a href={link} target="_blank" rel="noopener noreferrer" />}>
+                <Button variant="outline" size="sm" nativeButton={false} render={<a href={link} target="_blank" rel="noopener noreferrer" />}>
                   Open in {label}
                 </Button>
               ) : null}

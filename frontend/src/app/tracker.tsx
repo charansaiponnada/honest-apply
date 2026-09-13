@@ -1,14 +1,19 @@
+import { RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { toast } from "sonner"
 
 import { api, pct, safeUrl } from "@/app/api"
-import type { HistoryRow } from "@/app/types"
+import type { HistoryRow, Outcome } from "@/app/types"
 import { OUTCOMES } from "@/app/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import type { ChartConfig } from "@/components/ui/chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
@@ -18,6 +23,8 @@ interface ReplySync {
   replies: { run_id: string; company?: string; error?: string }[]
 }
 
+const chartConfig = { count: { label: "Applications", color: "var(--chart-1)" } } satisfies ChartConfig
+
 function replySummary(res: ReplySync) {
   if (!res.replies.length) return `Checked ${res.checked} application(s) in ${res.mode} mode. No new replies.`
   return res.replies
@@ -26,22 +33,34 @@ function replySummary(res: ReplySync) {
 }
 
 export function Tracker({ googleLive, refreshKey, onUndo }: { googleLive: boolean; refreshKey: number; onUndo: (runId: string) => Promise<boolean> }) {
-  const [rows, setRows] = useState<HistoryRow[]>([])
+  const [rows, setRows] = useState<HistoryRow[] | null>(null)
   const [query, setQuery] = useState("")
   const [busy, setBusy] = useState<string | null>(null)
 
   const load = useCallback(() => {
     api<HistoryRow[]>("/api/history")
       .then(setRows)
-      .catch((err: Error) => toast.error(err.message))
+      .catch((err: Error) => {
+        setRows([])
+        toast.error(err.message)
+      })
   }, [])
 
   useEffect(load, [load, refreshKey])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return rows.filter((r) => !q || `${r.company} ${r.role}`.toLowerCase().includes(q))
+    return (rows ?? []).filter((r) => !q || `${r.company} ${r.role}`.toLowerCase().includes(q))
   }, [rows, query])
+
+  const chartData = useMemo(
+    () =>
+      (Object.keys(OUTCOMES) as Outcome[]).map((outcome) => ({
+        outcome: OUTCOMES[outcome].label.split(",")[0],
+        count: (rows ?? []).filter((r) => !r.undone && r.outcome === outcome).length,
+      })),
+    [rows],
+  )
 
   async function withBusy(key: string, fn: () => Promise<void>) {
     setBusy(key)
@@ -55,36 +74,38 @@ export function Tracker({ googleLive, refreshKey, onUndo }: { googleLive: boolea
     }
   }
 
-  const active = rows.filter((r) => !r.undone)
-  const metrics = [
-    ["Applications", active.length],
-    ["Drafted or sent", active.filter((r) => r.outcome === "drafted" || r.outcome === "sent").length],
-    ["Flagged", rows.filter((r) => r.outcome === "flagged").length],
-    ["Replies", active.filter((r) => r.replied).length],
-  ] as const
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {metrics.map(([label, value]) => (
-          <Card key={label}>
-            <CardHeader>
-              <CardDescription>{label}</CardDescription>
-              <CardTitle className="text-3xl tabular-nums">{value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Outcomes</CardTitle>
+          <CardDescription>Active applications by what the agent did. Undone runs are excluded.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {rows === null ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ChartContainer config={chartConfig} className="h-48 w-full">
+              <BarChart data={chartData} accessibilityLayer>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="outcome" tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={28} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="count" fill="var(--color-count)" radius={6} />
+              </BarChart>
+            </ChartContainer>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Application history</CardTitle>
           <CardDescription>Reply found → CRM deal moves to replied, reminder cancelled, Slack pinged.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-2">
-            <Input className="max-w-xs" type="search" placeholder="Search company or role" aria-label="Search applications" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <CardAction>
             <Button
               variant="outline"
+              size="sm"
               disabled={busy !== null}
               onClick={() =>
                 withBusy("sync", async () => {
@@ -92,11 +113,20 @@ export function Tracker({ googleLive, refreshKey, onUndo }: { googleLive: boolea
                 })
               }
             >
-              {busy === "sync" ? <Spinner data-icon="inline-start" /> : null}
+              {busy === "sync" ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
               Sync replies
             </Button>
-          </div>
-          {filtered.length ? (
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Input className="max-w-xs" type="search" placeholder="Search company or role" aria-label="Search applications" value={query} onChange={(e) => setQuery(e.target.value)} />
+          {rows === null ? (
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : filtered.length ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -106,7 +136,7 @@ export function Tracker({ googleLive, refreshKey, onUndo }: { googleLive: boolea
                   <TableHead>Overlap</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Executor</TableHead>
-                  <TableHead />
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,9 +146,9 @@ export function Tracker({ googleLive, refreshKey, onUndo }: { googleLive: boolea
                   const replyLink = safeUrl(row.reply_link)
                   return (
                     <TableRow key={row.run_id}>
-                      <TableCell>{row.started_at.replace("T", " ").slice(0, 16)}</TableCell>
-                      <TableCell>{row.company}</TableCell>
-                      <TableCell className="max-w-56 truncate">{row.role}</TableCell>
+                      <TableCell className="tabular-nums">{row.started_at.replace("T", " ").slice(0, 16)}</TableCell>
+                      <TableCell className="max-w-44 truncate">{row.company}</TableCell>
+                      <TableCell className="max-w-56 truncate font-medium">{row.role}</TableCell>
                       <TableCell className="tabular-nums">{pct(row.overlap)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -126,7 +156,7 @@ export function Tracker({ googleLive, refreshKey, onUndo }: { googleLive: boolea
                             {row.undone ? "Undone" : row.replied ? "Replied" : (outcome?.label ?? row.outcome)}
                           </Badge>
                           {replyLink ? (
-                            <Button variant="link" size="sm" render={<a href={replyLink} target="_blank" rel="noopener noreferrer" />}>
+                            <Button variant="link" size="sm" nativeButton={false} render={<a href={replyLink} target="_blank" rel="noopener noreferrer" />}>
                               reply
                             </Button>
                           ) : null}
@@ -139,7 +169,16 @@ export function Tracker({ googleLive, refreshKey, onUndo }: { googleLive: boolea
                       <TableCell>
                         <div className="flex justify-end gap-2">
                           {actionable ? (
-                            <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => withBusy(row.run_id, async () => void (await onUndo(row.run_id)))}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={busy !== null}
+                              onClick={() =>
+                                withBusy(row.run_id, async () => {
+                                  await onUndo(row.run_id)
+                                })
+                              }
+                            >
                               {busy === row.run_id ? <Spinner data-icon="inline-start" /> : null}
                               Undo
                             </Button>

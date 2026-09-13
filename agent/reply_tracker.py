@@ -83,7 +83,8 @@ def sync_replies() -> dict:
             continue
         apps = entry.get("composio_apps") or []
         gmail_user = entry.get("user_id", "") if "gmail" in apps else ""
-        live = bool(gmail_user or creds)
+        simulated = entry["run_id"] in mock_replied  # an explicit "Simulate reply" always completes the loop
+        live = bool(gmail_user or creds) and not simulated
         if entry.get("outcome") not in (("sent",) if live else ("sent", "drafted")):
             continue
         if live and not entry.get("recipient"):
@@ -92,7 +93,9 @@ def sync_replies() -> dict:
         any_live = any_live or live
 
         try:
-            if gmail_user:
+            if simulated:
+                link = "mock"
+            elif gmail_user:
                 link = _find_composio_reply(gmail_user, entry)
             elif creds:
                 if service is None:

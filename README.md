@@ -75,13 +75,17 @@ uvicorn main:app --reload     # run from the repo root
 
 Open http://localhost:8000 for the landing page and http://localhost:8000/app for the agent.
 
-The agent UI is a React + [shadcn/ui](https://ui.shadcn.com) app (Vite, Tailwind v4, Base UI) in `frontend/`.
-Its production build is committed in `web/app-dist`, so running the server needs no Node. To change the UI:
+The landing page (`/`) and the dashboard (`/app`) are one React + [shadcn/ui](https://ui.shadcn.com) app (Vite,
+Tailwind v4, Base UI) in `frontend/`, split into a chunk per page. The dashboard uses the shadcn Sidebar, Table,
+Chart, Tabs and Field components; the landing page is built from shadcn components only. The visual system (teal
+and orange palette tuned to WCAG AA, Plus Jakarta Sans, loading and motion rules) comes from UI/UX Pro Max and
+is recorded in [`design-system/honest-apply/MASTER.md`](design-system/honest-apply/MASTER.md).
+The production build is committed in `web/app-dist`, so running the server needs no Node. To change the UI:
 
 ```bash
 cd frontend
 npm install
-npm run dev     # http://localhost:5173/app/, proxies /api to uvicorn on :8000
+npm run dev     # http://localhost:5173 (landing) and /app (dashboard); proxies /api to uvicorn on :8000
 npm run build   # typechecks, then writes ../web/app-dist (served at /app)
 ```
 With no keys at all, every integration runs in a clearly labeled **mock mode** (local files
