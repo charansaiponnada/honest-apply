@@ -13,7 +13,7 @@ then act across **Gmail, Google Calendar, HubSpot and Slack**, with each app han
 ![Composio](https://img.shields.io/badge/Composio-per--user_OAuth-6D28D9)
 ![Tests](https://img.shields.io/badge/eval-9%2F10_with_failures_injected-10B981)
 
-**[Demo video](ADD_VIDEO_LINK_BEFORE_SUBMITTING)** · **[Try it in 60 seconds](#try-it-in-60-seconds)** · **[How the agent plans](#how-the-agent-plans)** · **[Reliability](#reliability-testing)**
+**[Live site](https://honest-apply.vercel.app/)** · **[Demo video](https://youtu.be/YV_2_BDfJnc)** · **[Try it in 60 seconds](#try-it-in-60-seconds)** · **[How the agent plans](#how-the-agent-plans)** · **[Reliability](#reliability-testing)**
 
 <img src="app-screenshots/demo.gif" alt="Honest Apply: three agents plan an application and act across Gmail, Calendar, HubSpot and Slack" width="900" />
 
@@ -31,11 +31,11 @@ Built for the Multi-App AI Agent Hackathon, September 13, 2026.
 | 02 · External apps used | [Four apps that hand off](#external-apps-used) (Gmail, Google Calendar, HubSpot, Slack) |
 | 03 · Setup instructions | [Try it in 60 seconds](#try-it-in-60-seconds), then [go live](#connect-real-accounts) |
 | 04 · Reliability testing | [How we know it works](#reliability-testing) and [docs/RELIABILITY.md](docs/RELIABILITY.md) |
-| 05 · Demo video | [Watch the 2-minute demo](ADD_VIDEO_LINK_BEFORE_SUBMITTING) (script: [script.md](script.md)) |
+| 05 · Demo video | [Watch the 2-minute demo](https://youtu.be/YV_2_BDfJnc) (script: [script.md](script.md)) |
 
 ## Demo video
 
-[![Watch the 2-minute demo](app-screenshots/thumbnail.png)](ADD_VIDEO_LINK_BEFORE_SUBMITTING)
+[![Watch the 2-minute demo](app-screenshots/thumbnail.png)](https://youtu.be/YV_2_BDfJnc)
 
 ## Contents
 
