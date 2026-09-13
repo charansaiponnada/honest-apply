@@ -28,6 +28,16 @@
     <section id="tab-run" role="tabpanel">
       <form id="run-form" class="run-grid" autocomplete="off">
         <div>
+          <div class="card" id="recs-card">
+            <div class="result-head" style="margin-bottom:.3rem">
+              <h2 class="section" style="margin:0">Recommended for you</h2>
+              <button class="btn btn-ghost btn-sm" id="recs-btn" type="button">Find matches</button>
+              <button class="btn btn-sm" id="batch-btn" type="button" disabled style="margin-left:auto">Apply to selected (0)</button>
+            </div>
+            <p class="hint" id="recs-hint" style="margin-top:0">Ranks live jobs by how many of your proven skills they ask for (resume + GitHub). Applying runs the full agent on each: drafts only, every gate on.</p>
+            <div id="recs"></div>
+            <div id="batch" hidden></div>
+          </div>
           <div class="card">
             <details class="jobs" id="jobs">
               <summary>Find a live job <span class="meta" id="jobs-count"></span></summary>
@@ -39,7 +49,10 @@
           <div class="card">
             <div class="two-col">
               <div class="field">
-                <label class="label" for="resume">Your resume</label>
+                <div class="resume-head">
+                  <label class="label" for="resume">Your resume</label>
+                  <label class="btn btn-ghost btn-sm upload-btn">Upload PDF<input type="file" id="resume-file" accept=".pdf,.txt" hidden></label>
+                </div>
                 <textarea class="textarea" id="resume" rows="14" required minlength="20"></textarea>
               </div>
               <div class="field">
@@ -70,6 +83,11 @@
           <div class="card">
             <span class="label">Your apps</span>
             <div class="field"><label class="label" for="user-id">Your email</label><input class="input" id="user-id" type="email" maxlength="200" placeholder="you@example.com" autocomplete="email"></div>
+            <div class="field">
+              <label class="label" for="github">GitHub username (optional)</label>
+              <input class="input" id="github" maxlength="39" placeholder="octocat" autocomplete="off">
+              <p class="hint" id="github-hint" style="margin:.3rem 0 0">Skills your public repos prove get added, with the repo as the receipt.</p>
+            </div>
             <div id="connections"></div>
             <div class="field" style="margin-top:.7rem"><label class="label" for="slack-channel">Slack channel</label><input class="input" id="slack-channel" maxlength="80" placeholder="#job-applications"></div>
             <p class="hint" id="connections-hint" style="margin-top:0"></p>

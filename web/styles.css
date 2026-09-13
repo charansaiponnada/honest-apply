@@ -198,3 +198,13 @@ td.actions-cell { display: flex; gap: .35rem; }
 .conn-row .dot { margin-right: 0; }
 .conn-name { font-weight: 600; }
 .conn-state { margin-left: auto; }
+
+.resume-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; }
+.resume-head .label { margin: 0; }
+.upload-btn { cursor: pointer; }
+.rec { display: flex; gap: .6rem; align-items: flex-start; padding: .55rem 0; border-bottom: 1px solid var(--border); cursor: pointer; font-size: .86rem; }
+.rec:last-child { border-bottom: 0; }
+.rec input { margin-top: .25rem; accent-color: var(--primary); }
+.rec-body { flex: 1; min-width: 0; }
+.batch-row { display: flex; gap: .6rem; align-items: center; padding: .4rem 0; border-bottom: 1px solid var(--border); font-size: .86rem; flex-wrap: wrap; }
+.batch-row:last-child { border-bottom: 0; }

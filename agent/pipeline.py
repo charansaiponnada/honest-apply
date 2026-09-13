@@ -26,6 +26,7 @@ from agent.composio_client import connected_apps
 from agent.crm_action import candidate_from_resume, log_application
 from agent.executor import choose_tools, execute_review
 from agent.extract import extract_requirements
+from agent.github_profile import evidence_section, fetch_profile, verified_skills
 from agent.gmail_action import create_draft
 from agent.google_auth import is_live as google_is_live
 from agent.guardrail import score_overlap
@@ -92,7 +93,7 @@ def _seniority_gap(resume_text: str, requirements: dict) -> str | None:
 
 def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
                  jd_source: str = "pasted text", recipient: str = "", allow_send: bool = False, dedup: bool = True,
-                 user_id: str = "", slack_channel: str = "",
+                 user_id: str = "", slack_channel: str = "", github_username: str = "",
                  progress_cb=None) -> dict:
     def emit(**event):
         if progress_cb:
@@ -114,6 +115,19 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
     emit(type="step", step="researcher", status="running")
     requirements, extract_live = extract_requirements(jd_text)
     emit(type="step", step="researcher", status="done")
+
+    # GitHub as a second source of proof: job skills the resume lacks but public repos show are
+    # added as a labeled section naming the repos, so receipts treat them as backed, never invented.
+    github = {"username": github_username, "verified": [], "error": None}
+    if github_username:
+        profile = fetch_profile(github_username)
+        github["error"] = profile["error"]
+        github["verified"] = verified_skills(requirements.get("keywords", []) + requirements.get("skills", []),
+                                             resume_text, profile)
+        section = evidence_section(github["verified"])
+        if section:
+            resume_text = f"{resume_text.rstrip()}\n\n{section}"
+        emit(type="github", verified=[v["skill"] for v in github["verified"]], error=github["error"])
 
     # Agent 2: Tailor
     emit(type="step", step="tailor", status="running")
@@ -195,6 +209,7 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
         "requirements": requirements,
         "candidate": candidate["name"],
         "resume_lines": resume_lines(resume_text),
+        "github": github,
         "llm_live": llm_live,
         "composio_apps": sorted(connected),
         "tailored_resume": tailoring["tailored_resume"],
@@ -221,6 +236,7 @@ def run_pipeline(resume_text: str, jd_text: str, company: str, role: str,
         "recipient": recipient,
         "user_id": user_id,
         "slack_channel": slack_channel,
+        "github": github,
         "llm_live": llm_live,
         "composio_apps": sorted(connected),
         "candidate": candidate["name"],

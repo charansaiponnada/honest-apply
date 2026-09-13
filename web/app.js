@@ -149,17 +149,7 @@ function renderJobs() {
         h('div', {},
           h('div', {}, h('strong', {}, j.title), ' — ', j.company_name),
           h('div', { class: 'job-meta' }, [j.source, j.location, j.posted].filter(Boolean).join(' · '))),
-        h('button', {
-          class: 'btn btn-ghost btn-sm', type: 'button',
-          onclick: () => {
-            $('#jd').value = j.description || j.title;
-            $('#company').value = j.company_name || '';
-            $('#role').value = j.title || '';
-            jdSource = j.url || j.source;
-            $('#jobs').open = false;
-            toast(`Loaded ${j.title} at ${j.company_name}`);
-          },
-        }, 'Use'))),
+        h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => useJob(j) }, 'Use'))),
   );
 }
 
@@ -210,6 +200,8 @@ function handleEvent(ev) {
     const cls = { running: 'is-running', ok: 'is-done', mocked: 'is-done', error: 'is-error' }[ev.status] || '';
     chip.className = `app-chip ${cls}`;
     if (ev.status !== 'running') trace(`${ev.app}: ${ev.status} — ${ev.detail}`, ev.status === 'error' ? 't-fault' : '');
+  } else if (ev.type === 'github') {
+    trace(ev.error ? `github: ${ev.error}` : `github: ${ev.verified.length ? `verified from your repos: ${ev.verified.join(', ')}` : 'no extra skills this job needs'}`);
   } else if (ev.type === 'fault') {
     trace(`chaos panel: injecting ${ev.names.join(', ')}`, 't-fault');
   } else if (ev.type === 'result') {
@@ -261,6 +253,7 @@ $('#run-form').addEventListener('submit', async (e) => {
           jd_source: jdSource,
           user_id: $('#user-id').value.trim(),
           slack_channel: $('#slack-channel').value.trim(),
+          github_username: $('#github').value.trim(),
         }),
       });
       if (!res.ok) {
@@ -589,12 +582,150 @@ let connectionsTimer;
   connectionsTimer = setTimeout(loadConnections, 500);
 }));
 
+// ---------------------------------------------------------------- resume upload + GitHub
+function useJob(j) {
+  $('#jd').value = j.description || j.title;
+  $('#company').value = j.company_name || '';
+  $('#role').value = j.title || '';
+  jdSource = j.url || j.source;
+  $('#jobs').open = false;
+  toast(`Loaded ${j.title} at ${j.company_name}`);
+}
+
+$('#resume-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Resume file is over 5 MB.'); return; }
+  try {
+    const data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = () => reject(new Error('Could not read that file.'));
+      reader.readAsDataURL(file);
+    });
+    const res = await api('/api/resume/parse', { method: 'POST', body: { filename: file.name, data_base64: data } });
+    $('#resume').value = res.text;
+    toast(`Loaded ${file.name}`);
+  } catch (err) { toast(err.message); }
+});
+
+let githubTimer;
+$('#github').addEventListener('input', () => { clearTimeout(githubTimer); githubTimer = setTimeout(checkGithub, 600); });
+
+async function checkGithub() {
+  const username = $('#github').value.trim();
+  store.set('github', username);
+  const hint = $('#github-hint');
+  if (!username) { hint.textContent = 'Skills your public repos prove get added, with the repo as the receipt.'; return; }
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(username)) { hint.textContent = 'Not a valid GitHub username.'; return; }
+  try {
+    const p = await api(`/api/github/${encodeURIComponent(username)}`);
+    hint.textContent = p.error || `${p.repo_count} public repos · ${p.skills.slice(0, 6).join(', ') || 'no languages found'}`;
+  } catch (err) { hint.textContent = err.message; }
+}
+
+// ---------------------------------------------------------------- recommendations + batch apply
+let recJobs = [];
+const batchResults = {};
+
+$('#recs-btn').addEventListener('click', (e) => withBusy(e.currentTarget, 'Matching…', async () => {
+  try {
+    const res = await api('/api/recommendations', {
+      method: 'POST',
+      body: { resume_text: $('#resume').value, github_username: $('#github').value.trim(), limit: 10 },
+    });
+    recJobs = res.jobs;
+    $('#recs-hint').textContent = recJobs.length
+      ? `Top ${recJobs.length} of ${res.pool_size} live listings.${res.github_error ? ` GitHub: ${res.github_error}` : ''}`
+      : (res.error || 'No live listings mention your skills right now.');
+    renderRecs();
+  } catch (err) { toast(err.message); }
+}));
+
+function renderRecs() {
+  $('#recs').replaceChildren(...recJobs.map((j, i) =>
+    h('label', { class: 'rec' },
+      h('input', { type: 'checkbox', 'data-i': String(i), checked: i < 3 && !j.senior_role, onchange: updateBatchButton }),
+      h('div', { class: 'rec-body' },
+        h('div', {}, h('strong', {}, j.title), ' — ', j.company_name,
+          j.senior_role ? h('span', { class: 'badge badge-warning', style: 'margin-left:.4rem' }, 'senior role') : null),
+        h('div', { class: 'job-meta' },
+          `Matches ${j.matched_skills.length} resume skills: ${j.matched_skills.slice(0, 6).join(', ') || '—'}`,
+          j.github_skills.length ? ` · from GitHub: ${j.github_skills.slice(0, 4).join(', ')}` : '')),
+      h('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: (e) => { e.preventDefault(); useJob(j); } }, 'Use'))));
+  updateBatchButton();
+}
+
+const selectedJobs = () => $$('#recs input[type=checkbox]').filter((c) => c.checked).map((c) => recJobs[Number(c.dataset.i)]);
+
+function updateBatchButton() {
+  const n = selectedJobs().length;
+  const btn = $('#batch-btn');
+  btn.disabled = n === 0 || n > 5;
+  btn.textContent = n > 5 ? 'Select up to 5' : `Apply to selected (${n})`;
+}
+
+function setBadge(row, cls, text) {
+  const badge = row.querySelector('.badge');
+  badge.className = `badge ${cls}`;
+  badge.textContent = text;
+}
+
+$('#batch-btn').addEventListener('click', (e) => withBusy(e.currentTarget, 'Applying…', async () => {
+  const jobs = selectedJobs();
+  const rows = jobs.map((j) => h('div', { class: 'batch-row' }, h('span', { class: 'badge badge-neutral' }, 'queued'), h('span', {}, `${j.title} — ${j.company_name}`)));
+  const box = $('#batch');
+  box.replaceChildren(h('span', { class: 'label', style: 'margin-top:.9rem' }, 'Applying one by one'), ...rows);
+  box.hidden = false;
+  let current = -1;
+  try {
+    const res = await fetch('/api/apply-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resume_text: $('#resume').value,
+        jobs: jobs.map((j) => ({ title: j.title, company_name: j.company_name, description: j.description || j.title, url: j.url || '' })),
+        user_id: $('#user-id').value.trim(),
+        slack_channel: $('#slack-channel').value.trim(),
+        github_username: $('#github').value.trim(),
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(detailText(data.detail, res.status));
+    }
+    await readStream(res, (ev) => {
+      if (ev.type === 'batch') {
+        current = ev.index - 1;
+        resetPipeline();
+        trace(`job ${ev.index}/${ev.total}: ${ev.role} @ ${ev.company}`);
+        setBadge(rows[current], 'badge-neutral', 'running…');
+      } else if (ev.type === 'result') {
+        const r = ev.result;
+        batchResults[r.run_id] = r;
+        const [cls, text] = OUTCOMES[r.outcome] || ['badge-neutral', r.outcome];
+        setBadge(rows[current], cls, text.split(',')[0]);
+        rows[current].append(h('button', { class: 'btn btn-ghost btn-sm', type: 'button', style: 'margin-left:auto', onclick: () => renderResult(batchResults[r.run_id]) }, 'View'));
+        $$('.app-chip').forEach((c) => { if (!c.className.includes('is-')) c.classList.add('is-skipped'); });
+      } else if (ev.type === 'batch_done') {
+        ev.summary.forEach((s, i) => { if (s.outcome === 'error') setBadge(rows[i], 'badge-danger', 'error'); });
+        const drafted = ev.summary.filter((s) => ['drafted', 'sent'].includes(s.outcome)).length;
+        toast(`Done: ${drafted} drafted, ${ev.summary.length - drafted} stopped by a gate or error. Undo any run from the Tracker.`);
+      } else {
+        handleEvent(ev);
+      }
+    });
+  } catch (err) { showError(err.message); }
+}));
+
 // ---------------------------------------------------------------- init
 (async function init() {
   const tab = location.hash.slice(1);
   if (['run', 'tracker', 'reliability'].includes(tab)) showTab(tab);
   $('#user-id').value = store.get('userId');
   $('#slack-channel').value = store.get('slackChannel');
+  $('#github').value = store.get('github');
   const justConnected = new URLSearchParams(location.search).get('connected');
   if (justConnected) {
     toast(`${CONNECT_APPS[justConnected] || 'App'} connected.`);
@@ -604,5 +735,6 @@ let connectionsTimer;
     const [, defaults] = await Promise.all([loadStatus(), api('/api/defaults')]);
     if (!$('#resume').value) $('#resume').value = defaults.resume;
     await loadConnections();
+    checkGithub();
   } catch (err) { showError(`Could not reach the server: ${err.message}`); }
 })();

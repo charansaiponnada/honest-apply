@@ -59,6 +59,9 @@ when the employer replies.
 | **Apps that work together** | Each app's output feeds the next: the email link goes into the reminder, both go onto the CRM deal, Slack gets all three. The reply tracker closes the loop across all four. |
 | **Chaos panel** | Switch off Gmail, Calendar, HubSpot, Slack, the LLM (429) or the Google token from the UI or the eval CLI. The real retry, error-classification and fallback code handles it. |
 | **One-click undo** | Deletes the Gmail draft and Calendar event, moves the CRM deal to closed-lost, and tells Slack. A sent email can't be recalled, and undo says so. |
+| **GitHub-verified skills** | Enter a GitHub username: job skills the resume lacks but public repos show (repo language, topic, or README mention) are added in a labeled section naming the repos, so the resume gets current without inventing anything. Short names like "Go" only count as a repo language, never as a word in prose. |
+| **Recommendations + batch apply** | Live listings ranked by how many proven skills (resume + GitHub) they ask for, senior roles ranked down for early-career resumes. Select up to 5 and the agent applies to each in turn: drafts only, every gate and the duplicate check per job, live progress, one-click undo from the Tracker. |
+| **Resume upload** | PDF or text upload, parsed server-side; scanned PDFs get a clear error instead of an empty resume. |
 | **Sending is earned** | Gmail sends only if a Google account is connected, the user turned on *Allow sending*, a recipient is set, overlap clears `AUTO_SEND_THRESHOLD`, and every receipt checks out. Otherwise it's a draft. |
 
 ## Setup instructions
