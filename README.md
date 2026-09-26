@@ -90,7 +90,6 @@ Simulated mode runs the real Researcher, Tailor and Executor. Only the four apps
 server, so a simulated run never touches real accounts even when keys are configured.
 
 ## Real results in real accounts
-
 One application from the demo, run with Gmail, Google Calendar, HubSpot and Slack connected through Composio.
 The free LLM quota was used up at the time, so the agents ran their labeled rule-based fallback: the tailored resume
 is a reordering of the original lines rather than an LLM rewrite, and every line still passed the receipts check.
